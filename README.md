@@ -2,11 +2,11 @@
 
 Este es el repositorio del grupo 13, cuyos integrantes son:
 
-- Benjamin Campos       - ROL: 202473094-0
-- Joaquin hormaechea    - ROL: 202473133-5
+- Benjamín Campos       - ROL: 202473094-0
+- Joaquín hormaechea    - ROL: 202473133-5
 - Renato Lazilotta      - ROL: 202203041-0
-- Jesus Bustamante      - ROL: 201941079-2
-- **Tutor**: Critobal Cordova
+- Jesús Bustamante      - ROL: 201941079-2
+- **Tutor**: Cristóbal Córdova
 
 # INF236-2026-2-Proyecto Base
 
