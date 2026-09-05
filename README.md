@@ -30,3 +30,7 @@ El proyecto base está construido bajo una arquitectura orientada a microservici
    ```bash
    docker compose up --build
    ```
+4. Una vez finalizadas las pruebas, para detener y limpiar los contenedores liberando recursos ejecutar:
+   ```bash
+   docker compose down
+   ```
