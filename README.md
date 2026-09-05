@@ -3,10 +3,10 @@
 Este es el repositorio del grupo 13, cuyos integrantes son:
 
 - Benjamín Campos       - ROL: 202473094-0
-- Joaquín hormaechea    - ROL: 202473133-5
+- Joaquín Hormaechea    - ROL: 202473133-5
 - Renato Lazilotta      - ROL: 202203041-0
 - Jesús Bustamante      - ROL: 201941079-2
-- **Tutor**: Cristóbal Córdova
+- **Ayudante**: Cristóbal Córdova
 
 # INF236-2026-2-Proyecto Base
 
@@ -15,7 +15,7 @@ Este es el repositorio del grupo 13, cuyos integrantes son:
 * [Enlace Wiki](https://gitlab.inf.utfsm.cl/inf236-cc-2026-2/grupo13-2026-proyinf/-/wikis/home)
 
 
-## tecnologías y Ejecución
+## Tecnologías y Ejecución
 
 El proyecto base está construido bajo una arquitectura orientada a microservicios utilizando las siguientes tecnologías:
 * **Entorno de ejecución:** Node.js (v18.20.8)
