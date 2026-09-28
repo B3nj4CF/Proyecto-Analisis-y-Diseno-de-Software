@@ -33,7 +33,7 @@ El proyecto base está construido bajo una arquitectura orientada a microservici
 
 ### 1. Clonar el repositorio
 
-Abra una terminal, clone el repositorio y ubíquese en el directorio raíz del proyecto:
+Abrir una terminal, clone el repositorio y luego ubíquese en el directorio raíz del proyecto:
 
 ```bash
 git clone https://gitlab.inf.utfsm.cl/inf236-cc-2026-2/grupo13-2026-proyinf.git
@@ -73,7 +73,7 @@ Para finalizar las pruebas, apagar los contenedores y eliminar los volúmenes de
 docker compose down -v
 ```
 
-Si solo desea apagar los contenedores conservando los datos, use `docker compose down`.
+Si solo se desea apagar los contenedores conservando los datos, use `docker compose down`.
 
 ---
 
