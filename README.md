@@ -52,7 +52,7 @@ Desde la raíz del proyecto en la terminal (donde está `docker-compose.yml`), e
 docker compose up --build
 ```
 
-Este comando construye las imágenes y levanta todas las APIs y la base de datos. Para dejarlas corriendo en segundo plano, agregue la opción `-d`:
+Para dejarlas corriendo en segundo plano, agregue la opción `-d`:
 
 ```bash
 docker compose up --build -d
