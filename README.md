@@ -46,7 +46,7 @@ Abra **Docker Desktop** y espere a que indique **"Engine running"** antes de con
 
 ### 3. Construir y levantar el proyecto
 
-Desde la raíz del proyecto (donde está `docker-compose.yml`), ejecute en la terminal:
+Desde la raíz del proyecto en la terminal (donde está `docker-compose.yml`), ejecute en la terminal:
 
 ```bash
 docker compose up --build
