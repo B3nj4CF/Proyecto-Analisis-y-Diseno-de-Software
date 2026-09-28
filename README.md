@@ -52,7 +52,7 @@ Desde la raíz del proyecto en la terminal (donde está `docker-compose.yml`), e
 docker compose up --build
 ```
 
-Para dejarlas corriendo en segundo plano, agregue la opción `-d`:
+Para dejarlos corriendo en segundo plano, agregue la opción `-d`:
 
 ```bash
 docker compose up --build -d
@@ -67,7 +67,7 @@ Cuando la terminal confirme que los contenedores están listos, verifique el fun
 
 ### 5. Detener y limpiar recursos
 
-Para finalizar las pruebas, apagar los contenedores y eliminar los volúmenes de datos (borra la base de datos temporal), ejecute en la misma terminal:
+Para finalizar las pruebas, apagar los contenedores y eliminar los volúmenes de datos (para borrar la base de datos temporal), ejecute en la misma terminal:
 
 ```bash
 docker compose down -v
