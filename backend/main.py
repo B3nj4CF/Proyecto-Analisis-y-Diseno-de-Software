@@ -2,13 +2,15 @@ import os
 import shutil
 from typing import List
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from app.core.database import engine, Base, get_db
+from app.core.database import engine, Base, get_db, ensure_propuesta_columns
 from app.models.propuesta import Propuesta
-from app.models.entregable import Entregable, ComentarioEntregable
+from app.models.entregable import Entregable, ComentarioEntregable, EvaluacionEntregable
 from app.schemas.propuesta import PropuestaCreate, PropuestaResponse
 from app.schemas.entregable import EntregableResponse, ComentarioCreate, ComentarioResponse
+from app.schemas.evaluacion import EvaluacionCreate, EvaluacionResponse
 
 # Carpeta local para almacenar los archivos subidos
 UPLOAD_DIR = "uploads"
@@ -16,8 +18,17 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Crea automáticamente las nuevas tablas en PostgreSQL al levantar
 Base.metadata.create_all(bind=engine)
+ensure_propuesta_columns()
 
 app = FastAPI(title="Sistema de Gestión de Memorias")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def read_root():
@@ -35,6 +46,13 @@ def read_root():
 def crear_propuesta(datos: PropuestaCreate, db: Session = Depends(get_db)):
     nueva_propuesta = Propuesta(
         titulo=datos.titulo,
+        memorista=datos.memorista,
+        rut=datos.rut,
+        rol_usm=datos.rol_usm,
+        celular=datos.celular,
+        campus=datos.campus,
+        modalidad=datos.modalidad,
+        profesor=datos.profesor,
         resumen=datos.resumen,
         problema_ingenieria=datos.problema_ingenieria,
         objetivos=datos.objetivos,
@@ -98,6 +116,40 @@ def subir_documento_avance(
 )
 def listar_entregables(db: Session = Depends(get_db)):
     return db.query(Entregable).all()
+
+
+@app.post(
+    "/api/entregables/{entregable_id}/evaluacion",
+    response_model=EvaluacionResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["HU-07: Evaluación"],
+)
+def evaluar_entregable(
+    entregable_id: int,
+    datos: EvaluacionCreate,
+    db: Session = Depends(get_db),
+):
+    entregable = db.query(Entregable).filter(Entregable.id == entregable_id).first()
+    if not entregable:
+        raise HTTPException(status_code=404, detail="El entregable no existe.")
+    if datos.nota < 70 and not datos.confirmacion_reprobacion:
+        raise HTTPException(
+            status_code=400,
+            detail="Debe confirmar explícitamente una calificación menor a 70.",
+        )
+
+    evaluacion = EvaluacionEntregable(
+        entregable_id=entregable_id,
+        evaluador_nombre=datos.evaluador_nombre,
+        nota=datos.nota,
+        comentarios=datos.comentarios,
+        confirmacion_reprobacion=datos.confirmacion_reprobacion,
+    )
+    entregable.estado = "Evaluado"
+    db.add(evaluacion)
+    db.commit()
+    db.refresh(evaluacion)
+    return evaluacion
 
 # -------------------------------------------------------------
 # HU-05: Registrar Retroalimentación de Avance (Profesor Guía)
