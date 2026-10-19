@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, func
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, Text, func
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -27,3 +27,15 @@ class ComentarioEntregable(Base):
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
 
     entregable = relationship("Entregable", back_populates="comentarios")
+
+
+class EvaluacionEntregable(Base):
+    __tablename__ = "evaluaciones_entregables"
+
+    id = Column(Integer, primary_key=True, index=True)
+    entregable_id = Column(Integer, ForeignKey("entregables.id"), nullable=False)
+    evaluador_nombre = Column(String(150), nullable=False)
+    nota = Column(Integer, nullable=False)
+    comentarios = Column(Text, nullable=False)
+    confirmacion_reprobacion = Column(Boolean, nullable=False, default=False)
+    fecha_evaluacion = Column(DateTime(timezone=True), server_default=func.now())
