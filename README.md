@@ -58,10 +58,11 @@ Desde la raíz del proyecto en la terminal (donde está `docker-compose.yml`), e
 docker compose up --build
 ```
 
-Para dejarlos corriendo en segundo plano, agregue la opción `-d`:
+Importante: Al levantar el proyecto por primera vez, el contenedor de la base de datos debe inicializarse, lo que toma unos segundos extra. Es posible que el backend no logre conectarse en este primer intento. Si el sistema falla o se queda pegado en la primera ejecución realiza lo siguiente desde la terminal:
 
 ```bash
-docker compose up --build -d
+Ctrl + C
+docker compose up
 ```
 
 ### 4. Verificación del entorno
