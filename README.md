@@ -14,13 +14,19 @@ Este es el repositorio del grupo 13, cuyos integrantes son:
 
 * [Enlace Wiki](https://gitlab.inf.utfsm.cl/inf236-cc-2026-2/grupo13-2026-proyinf/-/wikis/home)
 
+# Video de Demostración (Hito 3)
+
+* [Video Funcionamiento](https://drive.google.com/drive/folders/1QaGmgNgGHjxJYAIH3kwpRbMmupVrKQQ0?usp=sharing)
+
 
 ## Tecnologías y Ejecución
 
-El proyecto base está construido bajo una arquitectura orientada a microservicios utilizando las siguientes tecnologías:
-* **Entorno de ejecución:** Node.js (v18.20.8)
-* **Base de Datos:** MySQL (26.7.0)
-* **Contenedores y Orquestación:** Docker (29.7.2) y Docker Compose (v5.5.0)
+El proyecto está construido utilizando las siguientes tecnologías:
+
+* **Frontend:** React (v18.3.1) con Vite (v5.4.1) bajo entorno Node.js (v18-alpine).
+* **Backend:** FastAPI (Python 3.11-slim) con SQLAlchemy como ORM.
+* **Base de Datos:** PostgreSQL 15 (postgres:15-alpine).
+* **Contenedores y Orquestación:** Docker (29.7.2) y Docker Compose (v5.5.0).
 
 ## Requisitos previos (dependencias)
 
@@ -52,18 +58,19 @@ Desde la raíz del proyecto en la terminal (donde está `docker-compose.yml`), e
 docker compose up --build
 ```
 
-Para dejarlos corriendo en segundo plano, agregue la opción `-d`:
+Importante: Al levantar el proyecto por primera vez, el contenedor de la base de datos debe inicializarse, lo que toma unos segundos extra. Es posible que el backend no logre conectarse en este primer intento. Si el sistema falla o se queda pegado en la primera ejecución realiza lo siguiente desde la terminal:
 
 ```bash
-docker compose up --build -d
+Ctrl + C
+docker compose up
 ```
 
 ### 4. Verificación del entorno
 
-Cuando la terminal confirme que los contenedores están listos, verifique el funcionamiento desde el navegador o Postman. Por ejemplo, para la API de ejemplo:
+Cuando la terminal confirme que los contenedores están listos, verifique el funcionamiento desde su navegador web:
 
-- Ingrese a: <http://localhost:8082>
-- Es normal recibir la respuesta `Cannot GET /`: confirma que el servidor de Node.js está escuchando correctamente en el puerto.
+- **Frontend (Interfaz de Usuario):** Ingrese a <http://localhost:5173> (Debería ver la pantalla de inicio de Vite + React).
+- **Backend (Documentación API):** Ingrese a <http://localhost:8000/docs> (Debería ver la interfaz de Swagger UI generada automáticamente por FastAPI).
 
 ### 5. Detener y limpiar recursos
 
@@ -81,7 +88,7 @@ Si solo se desea apagar los contenedores conservando los datos, use `docker comp
 
 | Problema | Posible causa | Solución |
 |---|---|---|
-| `Cannot connect to the Docker daemon` | Docker Desktop no está abierto | Abra Docker Desktop y espere a "Engine running". |
-| Puerto ocupado (`port is already allocated`) | Otro programa usa el puerto | Cierre el programa que lo usa o cambie el puerto en `docker-compose.yml`. |
-| Error de conexión a la base de datos | `.env` ausente o con valores incorrectos | Revise el paso 2. |
-| `init.sql` no se ejecutó | La base de datos ya existía de una ejecución previa | Ejecute `docker compose down -v` y vuelva a levantar el proyecto. |
+| `Cannot connect to the Docker daemon` | Docker Desktop no está abierto | Abra Docker Desktop y espere a que indique "Engine running". |
+| Puerto ocupado (`port is already allocated`) | Otro programa usa los puertos 8000, 5173 o 5432 | Cierre el programa que lo usa (como otro proyecto local o base de datos) o detenga otros contenedores activos. |
+| Los cambios en el código no se reflejan | Problema de caché de los contenedores | Baje los contenedores usando `docker compose down` y vuelva a levantarlos forzando la reconstrucción: `docker compose up --build`. |
+| La base de datos guarda información antigua | Los volúmenes locales conservan datos | Ejecute `docker compose down -v` para destruir el volumen de PostgreSQL y empezar con una base de datos limpia. **Atención:** Esto borrará todos los datos de prueba. |
