@@ -21,7 +21,7 @@ Este es el repositorio del grupo 13, cuyos integrantes son:
 
 ## Tecnologías y Ejecución
 
-El proyecto está construido bajo una arquitectura desacoplada (cliente-servidor) utilizando las siguientes tecnologías:
+El proyecto está construido utilizando las siguientes tecnologías:
 
 * **Frontend:** React (v18.3.1) con Vite (v5.4.1) bajo entorno Node.js (v18-alpine).
 * **Backend:** FastAPI (Python 3.11-slim) con SQLAlchemy como ORM.
