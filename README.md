@@ -8,8 +8,6 @@ Este es el repositorio del grupo 13, cuyos integrantes son:
 - Jesús Bustamante      - ROL: 201941079-2
 - **Ayudante**: Cristóbal Córdova
 
-# INF236-2026-2-Proyecto Base
-
 # Enlace Wiki
 
 * [Enlace Wiki](https://gitlab.inf.utfsm.cl/inf236-cc-2026-2/grupo13-2026-proyinf/-/wikis/home)
