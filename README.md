@@ -14,6 +14,10 @@ Este es el repositorio del grupo 13, cuyos integrantes son:
 
 * [Enlace Wiki](https://gitlab.inf.utfsm.cl/inf236-cc-2026-2/grupo13-2026-proyinf/-/wikis/home)
 
+# Video de Demostración (Hito 3)
+
+* [Video Funcionamiento](https://drive.google.com/drive/folders/1QaGmgNgGHjxJYAIH3kwpRbMmupVrKQQ0?usp=sharing)
+
 
 ## Tecnologías y Ejecución
 
