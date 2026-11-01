@@ -2,8 +2,6 @@
 
 Este es el repositorio del grupo 13, cuyos integrantes son:
 
-test
-
 - Benjamín Campos       - ROL: 202473094-0
 - Joaquín Hormaechea    - ROL: 202473133-5
 - Renato Lazilotta      - ROL: 202203041-0
