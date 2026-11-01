@@ -4,17 +4,6 @@ const routes = require('./src/routes/index');
 
 const app = express();
 
-app.use((req, res, next) => {
-  const startedAt = Date.now();
-  console.log(`[REQUEST] ${req.method} ${req.originalUrl}`);
-
-  res.on('finish', () => {
-    console.log(`[RESPONSE] ${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - startedAt}ms`);
-  });
-
-  next();
-});
-
 app.use(cors());
 app.options('*', cors());
 app.use(express.json());

@@ -7,14 +7,11 @@ const uploadDirectory = path.resolve(__dirname, '../../uploads');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    console.log("📌 [DEBUG] 1. Multer destination iniciado");
     fs.mkdir(uploadDirectory, { recursive: true }, (error) => {
-      if (error) console.error("❌ Error creando directorio uploads:", error);
       cb(error, uploadDirectory);
     });
   },
   filename: (req, file, cb) => {
-    console.log("📌 [DEBUG] 2. Multer guardando archivo:", file.originalname);
     const extension = path.extname(file.originalname).toLowerCase();
     cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${extension}`);
   }
@@ -26,7 +23,6 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024
   },
   fileFilter: (req, file, cb) => {
-    console.log("📌 [DEBUG] Evaluando mimetype del archivo:", file.mimetype);
     if (file.mimetype !== 'application/pdf') {
       return cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'archivo'));
     }
@@ -36,22 +32,14 @@ const upload = multer({
 
 // --- ENTREGABLES (HU-04) ---
 const subirEntregable = async (req, res) => {
-  console.log("📌 [DEBUG] 3. Entró a la función subirEntregable del controlador");
-  console.log("Body recibido:", req.body);
-  console.log("Archivo recibido:", req.file);
-
   try {
     const { propuesta_id, etapa } = req.body;
-    const archivo = req.file; // Obtenemos el archivo gracias a multer
+    const archivo = req.file;
 
-    // Validación básica ajustada para recibir el archivo
     if (!propuesta_id || !etapa || !archivo) {
-      console.log("⚠️ Faltan datos obligatorios:", { propuesta_id, etapa, archivo: !!archivo });
       return res.status(400).json({ error: "Faltan datos obligatorios o el archivo PDF" });
     }
 
-    console.log("📌 [DEBUG] 4. Guardando en base de datos...");
-    // Guardamos usando las propiedades que espera el modelo de base de datos
     const nuevoEntregable = await modelo.subirEntregable({
       propuesta_id,
       etapa,
@@ -59,10 +47,9 @@ const subirEntregable = async (req, res) => {
       ruta_archivo: archivo.path
     });
 
-    console.log("✅ [DEBUG] 5. Entregable guardado con éxito:", nuevoEntregable);
     res.status(201).json(nuevoEntregable);
   } catch (error) {
-    console.error("❌ Error al subir entregable:", error);
+    console.error("Error al subir entregable:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 };
@@ -133,7 +120,6 @@ module.exports = {
   evaluarEntregable,
   uploadMiddleware: upload.single('archivo'),
   handleUploadError: (error, req, res, next) => {
-    console.error("❌ [DEBUG] Error capturado en handleUploadError:", error);
     if (error instanceof multer.MulterError) {
       const message = error.code === 'LIMIT_FILE_SIZE'
         ? 'El archivo no puede superar los 10 MB'
