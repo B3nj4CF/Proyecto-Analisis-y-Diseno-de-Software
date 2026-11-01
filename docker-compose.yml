@@ -1,0 +1,65 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-sistema_memoria}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init:/docker-entrypoint-initdb.d
+    restart: always
+
+  api_entregables:
+    build: ./API_ENTREGABLES
+    container_name: api_entregables
+    restart: on-failure
+    ports:
+      - "3001:3001"
+    environment:
+      - DB_HOST=db
+      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - DB_NAME=${POSTGRES_DB:-sistema_memoria}
+      - DB_PORT=5432
+      - PORT=3001
+    volumes:
+      - ./API_ENTREGABLES:/usr/app
+      - /usr/app/node_modules
+      - ./API_ENTREGABLES/uploads:/usr/app/uploads
+    depends_on:
+      - db
+
+  api_tramitacion:
+    build: ./API_TRAMITACION
+    container_name: api_tramitacion
+    restart: on-failure
+    ports:
+      - "3002:3002"
+    environment:
+      - DB_HOST=db
+      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - DB_NAME=${POSTGRES_DB:-sistema_memoria}
+      - DB_PORT=5432
+      - PORT=3002
+    volumes:
+      - ./API_TRAMITACION:/usr/app
+      - /usr/app/node_modules
+      - ./API_TRAMITACION/uploads:/usr/app/uploads
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    container_name: frontend_app
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api_entregables
+      - api_tramitacion
+    restart: always
