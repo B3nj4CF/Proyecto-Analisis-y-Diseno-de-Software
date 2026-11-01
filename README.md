@@ -90,3 +90,5 @@ Si solo se desea apagar los contenedores conservando los datos, use `docker comp
 | Puerto ocupado (`port is already allocated`) | Otro programa usa los puertos 8000, 5173 o 5432 | Cierre el programa que lo usa (como otro proyecto local o base de datos) o detenga otros contenedores activos. |
 | Los cambios en el código no se reflejan | Problema de caché de los contenedores | Baje los contenedores usando `docker compose down` y vuelva a levantarlos forzando la reconstrucción: `docker compose up --build`. |
 | La base de datos guarda información antigua | Los volúmenes locales conservan datos | Ejecute `docker compose down -v` para destruir el volumen de PostgreSQL y empezar con una base de datos limpia. **Atención:** Esto borrará todos los datos de prueba. |
+
+test
