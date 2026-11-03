@@ -1,17 +1,45 @@
-version: "3.8"
-
 services:
-  db:
+  db_tramitacion:
     image: postgres:15-alpine
-    container_name: postgres_db
+    container_name: db_tramitacion
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      POSTGRES_DB: ${POSTGRES_DB:-sistema_memoria}
+      POSTGRES_DB: ${POSTGRES_DB_TRAMITACION:-tramitacion_db}
     ports:
       - "5432:5432"
     volumes:
-      - ./init:/docker-entrypoint-initdb.d
+      - pgdata_tramitacion:/var/lib/postgresql/data
+      - ./init/01-propuestas.sql:/docker-entrypoint-initdb.d/01-propuestas.sql:ro
+      - ./init/03-propuestas-pdf.sql:/docker-entrypoint-initdb.d/03-propuestas-pdf.sql:ro
+    restart: always
+
+  db_entregables:
+    image: postgres:15-alpine
+    container_name: db_entregables
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB_ENTREGABLES:-entregables_db}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata_entregables:/var/lib/postgresql/data
+      - ./init/02-entregables.sql:/docker-entrypoint-initdb.d/02-entregables.sql:ro
+    restart: always
+
+  db_validaciones:
+    image: postgres:15-alpine
+    container_name: db_validaciones
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB_VALIDACIONES:-validaciones_db}
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata_validaciones:/var/lib/postgresql/data
+      - ./init/04-validaciones.sql:/docker-entrypoint-initdb.d/04-validaciones.sql:ro
     restart: always
 
   api_entregables:
@@ -21,18 +49,19 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - DB_HOST=db
+      - DB_HOST=db_entregables
       - DB_USER=${POSTGRES_USER:-postgres}
       - DB_PASSWORD=${POSTGRES_PASSWORD:-password}
-      - DB_NAME=${POSTGRES_DB:-sistema_memoria}
+      - DB_NAME=${POSTGRES_DB_ENTREGABLES:-entregables_db}
       - DB_PORT=5432
       - PORT=3001
+      - TRAMITACION_API_URL=http://api_tramitacion:3002
     volumes:
       - ./API_ENTREGABLES:/usr/app
       - /usr/app/node_modules
       - ./API_ENTREGABLES/uploads:/usr/app/uploads
     depends_on:
-      - db
+      - db_entregables
 
   api_tramitacion:
     build: ./API_TRAMITACION
@@ -41,10 +70,10 @@ services:
     ports:
       - "3002:3002"
     environment:
-      - DB_HOST=db
+      - DB_HOST=db_tramitacion
       - DB_USER=${POSTGRES_USER:-postgres}
       - DB_PASSWORD=${POSTGRES_PASSWORD:-password}
-      - DB_NAME=${POSTGRES_DB:-sistema_memoria}
+      - DB_NAME=${POSTGRES_DB_TRAMITACION:-tramitacion_db}
       - DB_PORT=5432
       - PORT=3002
     volumes:
@@ -52,7 +81,23 @@ services:
       - /usr/app/node_modules
       - ./API_TRAMITACION/uploads:/usr/app/uploads
     depends_on:
-      - db
+      - db_tramitacion
+
+  api_validaciones:
+    build: ./API_VALIDACIONES
+    container_name: api_validaciones
+    restart: on-failure
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_HOST=db_validaciones
+      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - DB_NAME=${POSTGRES_DB_VALIDACIONES:-validaciones_db}
+      - DB_PORT=5432
+      - PORT_API=8081
+    depends_on:
+      - db_validaciones
 
   frontend:
     build: ./frontend
@@ -62,4 +107,10 @@ services:
     depends_on:
       - api_entregables
       - api_tramitacion
+      - api_validaciones
     restart: always
+
+volumes:
+  pgdata_tramitacion:
+  pgdata_entregables:
+  pgdata_validaciones:

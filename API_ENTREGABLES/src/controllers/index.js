@@ -4,6 +4,7 @@ const path = require('path');
 const modelo = require('../models/entregable');
 
 const uploadDirectory = path.resolve(__dirname, '../../uploads');
+const tramitacionApiUrl = process.env.TRAMITACION_API_URL || 'http://api_tramitacion:3002';
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -38,6 +39,23 @@ const subirEntregable = async (req, res) => {
 
     if (!propuesta_id || !etapa || !archivo) {
       return res.status(400).json({ error: "Faltan datos obligatorios o el archivo PDF" });
+    }
+
+    let propuestaResponse;
+    try {
+      propuestaResponse = await fetch(
+        `${tramitacionApiUrl}/api/propuestas/${encodeURIComponent(propuesta_id)}`
+      );
+    } catch (error) {
+      console.error('No se pudo conectar con API_TRAMITACION:', error);
+      return res.status(502).json({ error: "No se pudo validar la propuesta" });
+    }
+    if (propuestaResponse.status === 404) {
+      return res.status(404).json({ error: "La propuesta no existe" });
+    }
+    if (!propuestaResponse.ok) {
+      console.error(`API_TRAMITACION respondió ${propuestaResponse.status} al validar la propuesta`);
+      return res.status(502).json({ error: "No se pudo validar la propuesta" });
     }
 
     const nuevoEntregable = await modelo.subirEntregable({

@@ -56,6 +56,24 @@ const evaluarPropuesta = async (req, res) => {
   }
 };
 
+const obtenerPropuesta = async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM propuestas WHERE id = $1',
+      [req.params.propuesta_id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Propuesta no encontrada' });
+    }
+
+    return res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al obtener la propuesta:', error);
+    return res.status(500).json({ error: 'No se pudo obtener la propuesta' });
+  }
+};
+
 const uploadDirectory = path.resolve(__dirname, '../../uploads');
 const storage = multer.diskStorage({
   destination: (req, file, callback) => {
@@ -133,6 +151,7 @@ const listarPropuestas = async (req, res) => {
 module.exports = {
   crearPropuesta,
   listarPropuestas,
+  obtenerPropuesta,
   getProposalFile,
   evaluarPropuesta,
   uploadMiddleware: uploadPropuesta.single('archivo'),

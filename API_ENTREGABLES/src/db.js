@@ -2,8 +2,8 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
   user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'db',
-  database: process.env.DB_NAME || 'sistema_memoria',
+  host: process.env.DB_HOST || 'db_entregables',
+  database: process.env.DB_NAME || 'entregables_db',
   password: process.env.DB_PASSWORD || 'password',
   port: process.env.DB_PORT || 5432,
   connectionTimeoutMillis: 5000,

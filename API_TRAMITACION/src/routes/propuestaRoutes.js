@@ -9,6 +9,7 @@ router.post(
   controller.crearPropuesta
 );
 router.get('/propuestas', controller.listarPropuestas);
+router.get('/propuestas/:propuesta_id', controller.obtenerPropuesta);
 router.get('/propuestas/:propuesta_id/archivo', controller.getProposalFile);
 router.post('/propuestas/:propuesta_id/evaluaciones', controller.evaluarPropuesta);
 
