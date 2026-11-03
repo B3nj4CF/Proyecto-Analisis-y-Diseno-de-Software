@@ -1,10 +1,10 @@
 CREATE TABLE IF NOT EXISTS entregables (
     id SERIAL PRIMARY KEY,
-    propuesta_id VARCHAR(255) NOT NULL,
+    propuesta_id INTEGER NOT NULL,
     etapa VARCHAR(100) NOT NULL,
-    nombre_archivo VARCHAR(255) NOT NULL,
     ruta_archivo VARCHAR(255) NOT NULL,
-    estado VARCHAR(50) NOT NULL DEFAULT 'Pendiente de Revisión',
+    nombre_archivo VARCHAR(255) NOT NULL,
+    estado VARCHAR(50) DEFAULT 'Pendiente de Revisión',
     fecha_subida TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
