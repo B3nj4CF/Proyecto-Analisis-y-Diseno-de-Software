@@ -49,7 +49,18 @@ const evaluarPropuesta = async (req, res) => {
       [propuestaId, evaluador_nombre, Number(nota), comentarios, Boolean(confirmacion_reprobacion)]
     );
 
-    return res.status(201).json(result.rows[0]);
+    const nuevoEstado = Number(nota) >= 70
+      ? 'Aprobada por Guía'
+      : 'Rechazada por Guía';
+    const propuestaActualizada = await pool.query(
+      'UPDATE propuestas SET estado = $1 WHERE id = $2 RETURNING estado',
+      [nuevoEstado, propuestaId]
+    );
+
+    return res.status(201).json({
+      ...result.rows[0],
+      estado_propuesta: propuestaActualizada.rows[0].estado,
+    });
   } catch (error) {
     console.error('Error al evaluar propuesta:', error);
     return res.status(500).json({ error: 'No se pudo guardar la evaluación' });
@@ -71,6 +82,31 @@ const obtenerPropuesta = async (req, res) => {
   } catch (error) {
     console.error('Error al obtener la propuesta:', error);
     return res.status(500).json({ error: 'No se pudo obtener la propuesta' });
+  }
+};
+
+const actualizarEstadoPropuesta = async (req, res) => {
+  try {
+    const { estado } = req.body;
+    const propuestaId = req.params.propuesta_id;
+
+    if (estado !== 'Autorizada') {
+      return res.status(400).json({ error: 'Estado de propuesta inválido' });
+    }
+
+    const result = await pool.query(
+      'UPDATE propuestas SET estado = $1 WHERE id = $2 RETURNING *',
+      [estado, propuestaId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Propuesta no encontrada' });
+    }
+
+    return res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al actualizar el estado de la propuesta:', error);
+    return res.status(500).json({ error: 'No se pudo actualizar el estado de la propuesta' });
   }
 };
 
@@ -152,6 +188,7 @@ module.exports = {
   crearPropuesta,
   listarPropuestas,
   obtenerPropuesta,
+  actualizarEstadoPropuesta,
   getProposalFile,
   evaluarPropuesta,
   uploadMiddleware: uploadPropuesta.single('archivo'),

@@ -1,4 +1,5 @@
 import Navbar from '../components/Navbar';
+import { getStatusColorClass } from '../lib/status';
 
 function InscribedProposals({propuestas, propuestasError, onNavigate, currentView}) {
   return (
@@ -10,7 +11,7 @@ function InscribedProposals({propuestas, propuestasError, onNavigate, currentVie
             <div className="flex flex-col gap-6">
                 {propuestas.map((propuesta) => (
                     <div key={propuesta.id} className="bg-[#27272a] rounded-2xl p-6 md:p-8 shadow-lg border border-gray-600 relative">
-                        <div className="absolute -top-3 left-6 md:left-8 bg-[#eab308] text-white font-bold text-[10px] px-3 py-1 rounded-full">
+                        <div className={`absolute -top-3 left-6 md:left-8 ${getStatusColorClass(propuesta.estado)} text-white font-bold text-[10px] px-3 py-1 rounded-full`}>
                             {propuesta.estado}
                         </div>
                         <h3 className="text-white text-lg md:text-xl font-bold mt-4 mb-4">{propuesta.titulo}</h3>

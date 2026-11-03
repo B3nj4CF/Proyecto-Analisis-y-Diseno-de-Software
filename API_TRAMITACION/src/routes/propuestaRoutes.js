@@ -10,6 +10,7 @@ router.post(
 );
 router.get('/propuestas', controller.listarPropuestas);
 router.get('/propuestas/:propuesta_id', controller.obtenerPropuesta);
+router.patch('/propuestas/:propuesta_id/estado', controller.actualizarEstadoPropuesta);
 router.get('/propuestas/:propuesta_id/archivo', controller.getProposalFile);
 router.post('/propuestas/:propuesta_id/evaluaciones', controller.evaluarPropuesta);
 
