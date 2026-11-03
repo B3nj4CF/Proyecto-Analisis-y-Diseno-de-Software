@@ -9,6 +9,7 @@ router.post(
   controller.handleUploadError,
   controller.subirEntregable
 );
+router.get('/entregables', controller.obtenerTodosLosEntregables);
 router.get('/entregables/propuesta/:propuesta_id', controller.obtenerEntregables);
 
 // Rutas de Comentarios
