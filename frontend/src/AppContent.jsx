@@ -11,6 +11,7 @@ import AssignedProposals from './pages/AssignedProposals';
 import ProposalEvaluation from './pages/ProposalEvaluation';
 import UploadDeliverable from './pages/UploadDeliverable';
 import { listarEntregables, listarPropuestas } from './lib/api';
+import SecretariaReportes from './pages/SecretariaReportes';
 
 const propuestasLista = [
     {
@@ -138,6 +139,7 @@ export default function AppContent() {
     'subir-entregable': <UploadDeliverable {...pageProps} />,
     'propuestas-disponibles': <AvailableProposals {...pageProps} />, 'propuestas-asignadas': <AssignedProposals {...pageProps} />,
     'evaluacion-propuesta': <ProposalEvaluation {...pageProps} />,
+    'secretaria-reportes': <SecretariaReportes {...pageProps} />,
   };
 
   return pages[currentView] || pages.login;

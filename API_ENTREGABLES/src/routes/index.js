@@ -6,6 +6,7 @@ const db = require('../db');
 const pool = db.pool || db;
 
 const router = express.Router();
+const hu09Historial = require('../controllers/hu09HistorialController');
 
 // Asegurar que exista la carpeta uploads dentro del contenedor
 const uploadDir = 'uploads';
@@ -42,7 +43,9 @@ const upload = multer({
 router.post('/entregables/upload', (req, res, next) => {
   upload.single('archivo')(req, res, (err) => {
     if (err) {
-      return res.status(400).json({ error: err.message || 'Error al procesar el archivo.' });
+      return res.status(400).json({
+        error: err.message || 'Error al procesar el archivo.'
+      });
     }
     next();
   });
@@ -60,11 +63,25 @@ router.post('/entregables/upload', (req, res, next) => {
 
     // Persistencia en base de datos con fecha exacta y estado 'Pendiente de Revisión' (HU-04)
     const query = `
-      INSERT INTO entregables (propuesta_id, etapa, ruta_archivo, nombre_archivo, estado, fecha_subida)
+      INSERT INTO entregables (
+        propuesta_id,
+        etapa,
+        ruta_archivo,
+        nombre_archivo,
+        estado,
+        fecha_subida
+      )
       VALUES ($1, $2, $3, $4, 'Pendiente de Revisión', NOW())
       RETURNING id, propuesta_id, etapa, nombre_archivo, fecha_subida, estado;
     `;
-    const values = [propuesta_id, etapa, file.path, file.originalname];
+
+    const values = [
+      propuesta_id,
+      etapa,
+      file.path,
+      file.originalname
+    ];
+
     const { rows } = await pool.query(query, values);
 
     // Salida según formato exacto de la Ficha S-03
@@ -78,7 +95,9 @@ router.post('/entregables/upload', (req, res, next) => {
     });
   } catch (error) {
     console.error('Error en S-03 al subir entregable:', error);
-    return res.status(500).json({ error: 'Error al guardar el archivo en el volumen Docker.' });
+    return res.status(500).json({
+      error: 'Error al guardar el archivo en el volumen Docker.'
+    });
   }
 });
 
@@ -88,18 +107,30 @@ router.post('/entregables/upload', (req, res, next) => {
 router.get('/entregables/propuesta/:propuesta_id', async (req, res) => {
   try {
     const { propuesta_id } = req.params;
+
     const query = `
       SELECT id, propuesta_id, etapa, nombre_archivo, fecha_subida, estado
       FROM entregables
       WHERE propuesta_id = $1
       ORDER BY fecha_subida DESC;
     `;
+
     const { rows } = await pool.query(query, [propuesta_id]);
+
     return res.status(200).json(rows);
   } catch (error) {
     console.error('Error en S-04 al consultar entregables:', error);
-    return res.status(500).json({ error: 'Error interno al consultar la base de datos de entregables.' });
+
+    return res.status(500).json({
+      error: 'Error interno al consultar la base de datos de entregables.'
+    });
   }
 });
+
+// HU-09: consultar historial de entregables y evaluaciones de una memoria
+router.get(
+  '/entregables/propuesta/:propuesta_id/historial',
+  hu09Historial.obtenerHistorial
+);
 
 module.exports = router;

@@ -6,5 +6,11 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    proxy: {
+      '/api/procesos': {
+        target: 'http://api_validaciones:8081',
+        changeOrigin: true,
+      },
+    },
   }
 })
