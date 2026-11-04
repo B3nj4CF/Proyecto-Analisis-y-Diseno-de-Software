@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS entregables (
     etapa VARCHAR(100) NOT NULL,
     ruta_archivo VARCHAR(255) NOT NULL,
     nombre_archivo VARCHAR(255) NOT NULL,
-    estado VARCHAR(50) DEFAULT 'Pendiente de Revisión',
+    estado VARCHAR(50) NOT NULL DEFAULT 'Pendiente de Revisión',
     fecha_subida TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
