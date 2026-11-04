@@ -1,4 +1,5 @@
 import Navbar from '../components/Navbar';
+import { getStatusColorClass } from '../lib/status';
 
 const CORREFERENTE_ACTUAL = 'Cristobal Cordova';
 
@@ -6,8 +7,11 @@ function AssignedProposals({propuestas, propuestasError, entregables, setFormDat
   const propuestasAsignadas = propuestas.filter(
     (propuesta) => propuesta.profesor === CORREFERENTE_ACTUAL,
   );
+  const entregablesPendientes = entregables.filter(
+    (entregable) => entregable.estado === 'Pendiente de Revisión',
+  );
 
-  function openEvaluation(propuesta, entregable) {
+  function openEvaluation(propuesta, documento) {
     setFormData({
       memorista: propuesta.memorista,
       rut: propuesta.rut,
@@ -22,7 +26,7 @@ function AssignedProposals({propuestas, propuestasError, entregables, setFormDat
       problema: propuesta.problema_ingenieria,
       referencias: propuesta.bibliografia,
     });
-    onSelectDeliverable(entregable);
+    onSelectDeliverable(documento);
     onNavigate('evaluacion-propuesta');
   }
 
@@ -32,6 +36,15 @@ function AssignedProposals({propuestas, propuestasError, entregables, setFormDat
         <div className="mt-10 md:mt-16 w-full max-w-4xl px-4">
             <h2 className="text-white text-2xl md:text-3xl font-bold mb-6">Propuestas Asignadas</h2>
             {propuestasError && <p className="text-red-300 font-bold mb-4">{propuestasError}</p>}
+            {entregablesPendientes.length > 0 && (
+                <div role="alert" className="bg-[#fef3c7] text-[#92400e] rounded-2xl p-4 mb-6 border border-[#f59e0b]">
+                    <p className="font-bold">Nuevo documento pendiente de revisión</p>
+                    <p className="text-sm">
+                        El memorista envió {entregablesPendientes.length === 1 ? 'un avance' : `${entregablesPendientes.length} avances`}.
+                        Revisa la propuesta asignada para ver los documentos.
+                    </p>
+                </div>
+            )}
             {propuestasAsignadas.length === 0 && !propuestasError && (
                 <div className="bg-[#27272a] rounded-2xl p-6 border border-gray-600 text-gray-300">
                     No hay propuestas asignadas a {CORREFERENTE_ACTUAL}.
@@ -41,10 +54,17 @@ function AssignedProposals({propuestas, propuestasError, entregables, setFormDat
                 {propuestasAsignadas.map((propuesta) => (
                     <div key={propuesta.id} className="bg-[#27272a] rounded-2xl p-6 md:p-8 shadow-lg border border-gray-600 relative">
                         {(() => {
-                            const entregable = entregables.filter((item) => item.propuesta_id === propuesta.id).at(-1);
+                            const entregable = entregables.filter((item) => String(item.propuesta_id) === String(propuesta.id)).at(-1);
+                            const documento = entregable || (propuesta.ruta_archivo ? {
+                                id: propuesta.id,
+                                propuesta_id: propuesta.id,
+                                nombre_archivo: propuesta.nombre_archivo,
+                                ruta_archivo: propuesta.ruta_archivo,
+                                tipo: 'propuesta',
+                            } : null);
                             return (
                                 <>
-                        <div className="absolute -top-3 left-6 md:left-8 bg-[#eab308] text-white font-bold text-[10px] px-3 py-1 rounded-full">
+                        <div className={`absolute -top-3 left-6 md:left-8 ${getStatusColorClass(propuesta.estado)} text-white font-bold text-[10px] px-3 py-1 rounded-full`}>
                             {propuesta.estado}
                         </div>
                         <h3 className="text-white text-lg md:text-xl font-bold mt-4 mb-4">{propuesta.titulo}</h3>
@@ -55,10 +75,10 @@ function AssignedProposals({propuestas, propuestasError, entregables, setFormDat
                             <p className="text-xs text-gray-500 mt-4">Ficha de evaluación de trabajo de titulo</p>
                         </div>
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-t border-gray-600 pt-4 gap-4 md:gap-0">
-                            <button onClick={() => entregable && openEvaluation(propuesta, entregable)} disabled={!entregable} className="bg-[#3f3f46] text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-500 transition text-xs disabled:opacity-50 disabled:cursor-not-allowed">
+                            <button onClick={() => documento && openEvaluation(propuesta, documento)} disabled={!documento} className="bg-[#3f3f46] text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-500 transition text-xs disabled:opacity-50 disabled:cursor-not-allowed">
                                 Subir Obserciones / Calificacion
                             </button>
-                            {!entregable && <span className="text-gray-500 text-xs">Sin documento de avance</span>}
+                            {!documento && <span className="text-gray-500 text-xs">Sin documento disponible</span>}
                             <span className="text-gray-400 text-xs">
                                 Enviada el {new Date(propuesta.fecha_creacion).toLocaleString('es-CL')}
                             </span>

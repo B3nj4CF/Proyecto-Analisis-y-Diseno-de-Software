@@ -1,49 +1,121 @@
 services:
-  # Base de Datos Relacional (PostgreSQL)
-  db:
+  db_tramitacion:
     image: postgres:15-alpine
-    container_name: memorias_db
-    restart: always
+    container_name: db_tramitacion
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: adminpassword
-      POSTGRES_DB: memorias_db
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB_TRAMITACION:-tramitacion_db}
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata_tramitacion:/var/lib/postgresql/data
+      - ./init/01-propuestas.sql:/docker-entrypoint-initdb.d/01-propuestas.sql:ro
+      - ./init/03-propuestas-pdf.sql:/docker-entrypoint-initdb.d/03-propuestas-pdf.sql:ro
+    restart: always
 
-  # Backend (FastAPI)
-  backend:
-    build: 
-      context: ./backend
-    container_name: memorias_backend
-    ports:
-      - "8000:8000"
+  db_entregables:
+    image: postgres:15-alpine
+    container_name: db_entregables
     environment:
-      - DATABASE_URL=postgresql://admin:adminpassword@db:5432/memorias_db
-    depends_on:
-      - db
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB_ENTREGABLES:-entregables_db}
+    ports:
+      - "5433:5432"
     volumes:
-      - ./backend:/app
-      # Esta línea asegura que los archivos subidos no se borren al apagar Docker
-      - backend_uploads:/app/uploads 
+      - pgdata_entregables:/var/lib/postgresql/data
+      - ./init/02-entregables.sql:/docker-entrypoint-initdb.d/02-entregables.sql:ro
+    restart: always
 
-  # Frontend (React + Vite)
+  db_validaciones:
+    image: postgres:15-alpine
+    container_name: db_validaciones
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB_VALIDACIONES:-validaciones_db}
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata_validaciones:/var/lib/postgresql/data
+      - ./init/04-validaciones.sql:/docker-entrypoint-initdb.d/04-validaciones.sql:ro
+      - ./init/05-hu09-reportes.sql:/docker-entrypoint-initdb.d/05-hu09-reportes.sql:ro
+    restart: always
+
+  api_entregables:
+    build: ./API_ENTREGABLES
+    container_name: api_entregables
+    restart: on-failure
+    ports:
+      - "3001:3001"
+    environment:
+      - DB_HOST=db_entregables
+      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - DB_NAME=${POSTGRES_DB_ENTREGABLES:-entregables_db}
+      - DB_PORT=5432
+      - PORT=3001
+      - TRAMITACION_API_URL=http://api_tramitacion:3002
+    volumes:
+      - ./API_ENTREGABLES:/usr/app
+      - /usr/app/node_modules
+      - ./API_ENTREGABLES/uploads:/usr/app/uploads
+    depends_on:
+      - db_entregables
+
+  api_tramitacion:
+    build: ./API_TRAMITACION
+    container_name: api_tramitacion
+    restart: on-failure
+    ports:
+      - "3002:3002"
+    environment:
+      - DB_HOST=db_tramitacion
+      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - DB_NAME=${POSTGRES_DB_TRAMITACION:-tramitacion_db}
+      - DB_PORT=5432
+      - PORT=3002
+    volumes:
+      - ./API_TRAMITACION:/usr/app
+      - /usr/app/node_modules
+      - ./API_TRAMITACION/uploads:/usr/app/uploads
+    depends_on:
+      - db_tramitacion
+
+  api_validaciones:
+    build: ./API_VALIDACIONES
+    container_name: api_validaciones
+    restart: on-failure
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_HOST=db_validaciones
+      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - DB_NAME=${POSTGRES_DB_VALIDACIONES:-validaciones_db}
+      - DB_PORT=5432
+      - PORT_API=8081
+      - TRAMITACION_API_URL=http://api_tramitacion:3002
+      - ENTREGABLES_API_URL=http://api_entregables:3001
+    depends_on:
+      - db_validaciones
+      - api_tramitacion
+      - api_entregables
+
   frontend:
-    build: 
-      context: ./frontend
-    container_name: memorias_frontend
+    build: ./frontend
+    container_name: frontend_app
     ports:
       - "5173:5173"
-    environment:
-      - VITE_API_URL=http://localhost:8000
     depends_on:
-      - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - api_entregables
+      - api_tramitacion
+      - api_validaciones
+    restart: always
 
 volumes:
-  postgres_data:
-  backend_uploads:
+  pgdata_tramitacion:
+  pgdata_entregables:
+  pgdata_validaciones:

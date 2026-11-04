@@ -5,14 +5,24 @@ import { crearPropuesta } from '../lib/api';
 function CreateProposal({formData, setFormData, onNavigate, currentView, onProposalCreated}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [archivo, setArchivo] = useState(null);
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (!archivo) {
+      setError('Selecciona el documento PDF de la propuesta.');
+      return;
+    }
+    if (archivo.type !== 'application/pdf') {
+      setError('El documento debe estar en formato PDF.');
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
 
     try {
-      const propuesta = await crearPropuesta(formData);
+      const propuesta = await crearPropuesta({ ...formData, archivo });
       onProposalCreated(propuesta);
       onNavigate('propuestas-inscritas');
     } catch (submitError) {
@@ -93,7 +103,17 @@ function CreateProposal({formData, setFormData, onNavigate, currentView, onPropo
             </div>
             <div className="flex flex-col md:flex-row justify-between items-center bg-[#57606f] p-4 rounded-2xl gap-4">
                 <div className="border border-dashed border-white rounded-lg p-3 text-white text-xs w-full md:w-1/2 text-center">
-                    Arrastra o Seleciona el documento de tu propuesta aquí (.pdf)
+                    <label htmlFor="archivo-propuesta" className="cursor-pointer">
+                        <span className="block mb-2">Selecciona el documento de tu propuesta (.pdf)</span>
+                        <input
+                            id="archivo-propuesta"
+                            type="file"
+                            accept="application/pdf,.pdf"
+                            onChange={(event) => setArchivo(event.target.files?.[0] || null)}
+                            className="w-full text-white text-xs"
+                        />
+                    </label>
+                    {archivo && <p className="mt-2 text-emerald-200">{archivo.name}</p>}
                 </div>
                 <div className="flex flex-wrap gap-3 justify-center">
                     <button type="button" onClick={() => onNavigate('inicio-memorista')} className="bg-[#fb7185] text-white font-bold py-2 px-5 rounded-lg hover:bg-rose-500 transition shadow-md text-sm">
@@ -102,7 +122,7 @@ function CreateProposal({formData, setFormData, onNavigate, currentView, onPropo
                     <button type="button" onClick={() => onNavigate('inicio-memorista')} className="bg-[#f97316] text-white font-bold py-2 px-5 rounded-lg hover:bg-orange-600 transition shadow-md text-sm">
                         Volver
                     </button>
-                    <button onClick={handleSubmit} disabled={isSubmitting} className="bg-[#10b981] text-white font-bold py-2 px-5 rounded-lg hover:bg-emerald-600 transition flex items-center gap-2 shadow-md text-sm disabled:cursor-not-allowed disabled:opacity-60">
+                    <button type="submit" disabled={isSubmitting} className="bg-[#10b981] text-white font-bold py-2 px-5 rounded-lg hover:bg-emerald-600 transition flex items-center gap-2 shadow-md text-sm disabled:cursor-not-allowed disabled:opacity-60">
                         <span>✉️</span> Enviar Propuesta
                     </button>
                 </div>

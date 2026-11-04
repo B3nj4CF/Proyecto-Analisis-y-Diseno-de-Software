@@ -1,8 +1,16 @@
 import { useState } from 'react';
 import Navbar from '../components/Navbar';
-import { crearEvaluacion } from '../lib/api';
+import { API_TRAMITACION_URL, crearEvaluacion, crearEvaluacionPropuesta } from '../lib/api';
+import { getStatusColorClass } from '../lib/status';
 
-function ProposalEvaluation({formData, selectedDeliverable, onNavigate, currentView}) {
+function ProposalEvaluation({
+  formData,
+  selectedDeliverable,
+  onNavigate,
+  currentView,
+  onDeliverableEvaluated,
+  onProposalEvaluated,
+}) {
   const [nota, setNota] = useState('');
   const [comentarios, setComentarios] = useState('');
   const [confirmacionReprobacion, setConfirmacionReprobacion] = useState(false);
@@ -32,12 +40,19 @@ function ProposalEvaluation({formData, selectedDeliverable, onNavigate, currentV
     setIsSubmitting(true);
     setError('');
     try {
-      await crearEvaluacion(selectedDeliverable.id, {
+      const datosEvaluacion = {
         evaluador_nombre: 'Cristobal Cordova',
         nota: numericNota,
         comentarios,
         confirmacion_reprobacion: confirmacionReprobacion,
-      });
+      };
+      if (selectedDeliverable.tipo === 'propuesta') {
+        const evaluacion = await crearEvaluacionPropuesta(selectedDeliverable.id, datosEvaluacion);
+        onProposalEvaluated(selectedDeliverable.id, evaluacion.estado_propuesta);
+      } else {
+        await crearEvaluacion(selectedDeliverable.id, datosEvaluacion);
+        onDeliverableEvaluated(selectedDeliverable.id, selectedDeliverable.propuesta_id);
+      }
       onNavigate('propuestas-asignadas');
     } catch (submitError) {
       setError(submitError.message);
@@ -56,7 +71,7 @@ function ProposalEvaluation({formData, selectedDeliverable, onNavigate, currentV
         </div>
         <div className="w-full max-w-5xl flex flex-col md:flex-row gap-6 px-4">
             <div className="w-full md:w-1/3 bg-[#27272a] rounded-2xl p-6 border border-gray-600 flex flex-col relative mt-2 md:mt-0">
-                <div className="absolute -top-4 left-6 bg-[#eab308] text-white font-bold text-[10px] px-3 py-1 rounded-full">
+                <div className={`absolute -top-4 left-6 ${getStatusColorClass('Pendiente de calificar')} text-white font-bold text-[10px] px-3 py-1 rounded-full`}>
                     Pendiente de calificar
                 </div>
                 <p className="text-gray-400 text-xs mb-4 mt-2">Enviada el 18-10-2026 01:40</p>
@@ -68,10 +83,30 @@ function ProposalEvaluation({formData, selectedDeliverable, onNavigate, currentV
                 </div>
                 <div className="bg-[#3f3f46] p-4 rounded-xl mt-auto">
                     <p className="text-white font-bold text-sm mb-1">{selectedDeliverable?.nombre_archivo}</p>
-                    <p className="text-gray-400 text-[10px] mb-4">Documento de avance • PDF</p>
+                    <p className="text-gray-400 text-[10px] mb-4">
+                        {selectedDeliverable?.tipo === 'propuesta' ? 'Propuesta • PDF' : 'Documento de avance • PDF'}
+                    </p>
                     <div className="flex flex-wrap gap-2">
-                        <button className="bg-[#0284c7] text-white text-xs px-3 py-1.5 rounded hover:bg-blue-600 font-bold">Descargar</button>
-                        <button className="bg-[#52525b] text-white text-xs px-3 py-1.5 rounded hover:bg-gray-500 font-bold">Ver en linea</button>
+                        {selectedDeliverable?.tipo === 'propuesta' && (
+                            <>
+                                <a
+                                    href={`${API_TRAMITACION_URL}/api/propuestas/${selectedDeliverable.id}/archivo`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="bg-[#0284c7] text-white text-xs px-3 py-1.5 rounded hover:bg-blue-600 font-bold"
+                                >
+                                    Descargar
+                                </a>
+                                <a
+                                    href={`${API_TRAMITACION_URL}/api/propuestas/${selectedDeliverable.id}/archivo`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="bg-[#52525b] text-white text-xs px-3 py-1.5 rounded hover:bg-gray-500 font-bold"
+                                >
+                                    Ver en línea
+                                </a>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
