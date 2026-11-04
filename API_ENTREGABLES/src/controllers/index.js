@@ -1,70 +1,78 @@
-const multer = require('multer');
-const fs = require('fs');
-const path = require('path');
-const modelo = require('../models/entregable');
+const pool = require('../db');
+const axios = require('axios');
 
-const uploadDirectory = path.resolve(__dirname, '../../uploads');
-const tramitacionApiUrl = process.env.TRAMITACION_API_URL || 'http://api_tramitacion:3002';
+const ETAPAS_VALIDAS = ['definición', 'estado del arte', 'solución', 'validación'];
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    fs.mkdir(uploadDirectory, { recursive: true }, (error) => {
-      cb(error, uploadDirectory);
-    });
-  },
-  filename: (req, file, cb) => {
-    const extension = path.extname(file.originalname).toLowerCase();
-    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${extension}`);
-  }
-});
-
-const upload = multer({
-  storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024
-  },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype !== 'application/pdf') {
-      return cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'archivo'));
-    }
-    cb(null, true);
-  }
-});
-
-// --- ENTREGABLES (HU-04) ---
 const subirEntregable = async (req, res) => {
   try {
     const { propuesta_id, etapa } = req.body;
     const archivo = req.file;
 
-    if (!propuesta_id || !etapa || !archivo) {
-      return res.status(400).json({ error: "Faltan datos obligatorios o el archivo PDF" });
+    // Validación de archivo presente
+    if (!archivo) {
+      return res.status(400).json({ mensaje: 'No se ha adjuntado ningún archivo.' });
     }
 
-    let propuestaResponse;
+    if (!propuesta_id || !etapa) {
+      return res.status(400).json({ mensaje: 'Faltan parámetros requeridos: propuesta_id o etapa.' });
+    }
+
+    // CA1: Validar que la etapa corresponda al desarrollo
+    const etapaNormalizada = etapa.trim().toLowerCase();
+    if (!ETAPAS_VALIDAS.includes(etapaNormalizada)) {
+      return res.status(400).json({ 
+        mensaje: `Etapa inválida. Debe ser una de: ${ETAPAS_VALIDAS.join(', ')}.` 
+      });
+    }
+
+    // CA1: Validar que la propuesta esté en estado "Autorizada" en TT2
+    const tramitacionUrl = process.env.TRAMITACION_API_URL || 'http://api_tramitacion:3002';
+    let propuesta;
     try {
-      propuestaResponse = await fetch(
-        `${tramitacionApiUrl}/api/propuestas/${encodeURIComponent(propuesta_id)}`
-      );
-    } catch (error) {
-      console.error('No se pudo conectar con API_TRAMITACION:', error);
-      return res.status(502).json({ error: "No se pudo validar la propuesta" });
-    }
-    if (propuestaResponse.status === 404) {
-      return res.status(404).json({ error: "La propuesta no existe" });
-    }
-    if (!propuestaResponse.ok) {
-      console.error(`API_TRAMITACION respondió ${propuestaResponse.status} al validar la propuesta`);
-      return res.status(502).json({ error: "No se pudo validar la propuesta" });
+      const responsePropuesta = await axios.get(`${tramitacionUrl}/propuestas/${propuesta_id}`);
+      propuesta = responsePropuesta.data;
+    } catch (err) {
+      return res.status(404).json({ mensaje: 'No se pudo verificar la propuesta en el sistema de tramitación.' });
     }
 
-    const nuevoEntregable = await modelo.subirEntregable({
+    if (!propuesta || propuesta.estado?.toLowerCase() !== 'autorizada') {
+      return res.status(403).json({ 
+        mensaje: 'Solo se pueden subir entregables si la propuesta está en estado Autorizada.' 
+      });
+    }
+
+    // CA2 y CA3: Guardar con estado "Pendiente de Revisión" y persistir timestamp exacto
+    const queryEntregable = `
+      INSERT INTO entregables (propuesta_id, etapa, nombre_archivo, ruta_archivo, estado, fecha_subida)
+      VALUES ($1, $2, $3, $4, 'Pendiente de Revisión', CURRENT_TIMESTAMP)
+      RETURNING *;
+    `;
+    const valuesEntregable = [
       propuesta_id,
-      etapa,
-      nombre_archivo: archivo.originalname,
-      ruta_archivo: archivo.path
+      etapaNormalizada,
+      archivo.originalname,
+      archivo.path
+    ];
+
+    const { rows } = await pool.query(queryEntregable, valuesEntregable);
+    const entregableCreado = rows[0];
+
+    // CA3: Generar alerta al Profesor Guía y al Co-guía/Mentor
+    const mensajeAlerta = `Nuevo entregable subido para la etapa "${etapaNormalizada}" en la propuesta ${propuesta_id}.`;
+    await pool.query(`
+      INSERT INTO alertas_entregables (entregable_id, destinatario_rol, mensaje)
+      VALUES 
+        ($1, 'Profesor Guía', $2),
+        ($1, 'Co-guía/Mentor', $2);
+    `, [entregableCreado.id, mensajeAlerta]);
+
+    return res.status(201).json({
+      mensaje: 'Entregable subido exitosamente.',
+      entregable: entregableCreado
     });
 
+<<<<<<< HEAD
+=======
     res.status(201).json({
       ...nuevoEntregable,
       notificacion: {
@@ -73,12 +81,16 @@ const subirEntregable = async (req, res) => {
         mensaje: `El memorista entregó ${etapa} para revisión.`
       }
     });
+>>>>>>> origin/develop
   } catch (error) {
-    console.error("Error al subir entregable:", error);
-    res.status(500).json({ error: "Error interno del servidor" });
+    console.error('Error al subir entregable:', error);
+    return res.status(500).json({ mensaje: 'Error interno del servidor al procesar el entregable.' });
   }
 };
 
+<<<<<<< HEAD
+const obtenerHistorialEntregables = async (req, res) => {
+=======
 const obtenerTodosLosEntregables = async (req, res) => {
   try {
     const entregables = await modelo.obtenerTodosLosEntregables();
@@ -90,11 +102,22 @@ const obtenerTodosLosEntregables = async (req, res) => {
 };
 
 const obtenerEntregables = async (req, res) => {
+>>>>>>> origin/develop
   try {
     const { propuesta_id } = req.params;
-    const entregables = await modelo.obtenerEntregablesPorPropuesta(propuesta_id);
-    res.status(200).json(entregables);
+    const query = `
+      SELECT id, propuesta_id, etapa, nombre_archivo, estado, fecha_subida 
+      FROM entregables 
+      WHERE propuesta_id = $1 
+      ORDER BY fecha_subida DESC;
+    `;
+    const { rows } = await pool.query(query, [propuesta_id]);
+    return res.status(200).json(rows);
   } catch (error) {
+<<<<<<< HEAD
+    console.error('Error al obtener historial:', error);
+    return res.status(500).json({ mensaje: 'Error al consultar historial de entregables.' });
+=======
     console.error("Error al obtener entregables:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
@@ -164,11 +187,15 @@ const evaluarEntregable = async (req, res) => {
   } catch (error) {
     console.error("Error al evaluar entregable:", error);
     res.status(500).json({ error: "Error interno del servidor" });
+>>>>>>> origin/develop
   }
 };
 
 module.exports = {
   subirEntregable,
+<<<<<<< HEAD
+  obtenerHistorialEntregables
+=======
   obtenerTodosLosEntregables,
   obtenerEntregables,
   agregarComentario,
@@ -188,4 +215,5 @@ module.exports = {
     }
     next();
   }
+>>>>>>> origin/develop
 };
