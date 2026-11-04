@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/index');
-
+const hu09Historial = require('../controllers/hu09HistorialController');
 // Rutas de Entregables
 router.post(
   '/entregables/upload',
@@ -18,5 +18,5 @@ router.get('/entregables/:entregable_id/comentarios', controller.obtenerComentar
 
 // Rutas de Evaluaciones
 router.post('/entregables/:entregable_id/evaluaciones', controller.evaluarEntregable);
-
+router.get('/entregables/propuesta/:propuesta_id/historial', hu09Historial.obtenerHistorial);
 module.exports = router;

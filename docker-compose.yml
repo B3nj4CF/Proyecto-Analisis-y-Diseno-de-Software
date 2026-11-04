@@ -40,6 +40,7 @@ services:
     volumes:
       - pgdata_validaciones:/var/lib/postgresql/data
       - ./init/04-validaciones.sql:/docker-entrypoint-initdb.d/04-validaciones.sql:ro
+      - ./init/05-hu09-reportes.sql:/docker-entrypoint-initdb.d/05-hu09-reportes.sql:ro
     restart: always
 
   api_entregables:
@@ -96,8 +97,12 @@ services:
       - DB_NAME=${POSTGRES_DB_VALIDACIONES:-validaciones_db}
       - DB_PORT=5432
       - PORT_API=8081
+      - TRAMITACION_API_URL=http://api_tramitacion:3002
+      - ENTREGABLES_API_URL=http://api_entregables:3001
     depends_on:
       - db_validaciones
+      - api_tramitacion
+      - api_entregables
 
   frontend:
     build: ./frontend
