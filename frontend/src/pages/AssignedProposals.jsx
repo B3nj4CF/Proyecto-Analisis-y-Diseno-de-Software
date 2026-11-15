@@ -1,10 +1,14 @@
 import Navbar from '../components/Navbar';
+import { getStatusColorClass } from '../lib/status';
 
 const CORREFERENTE_ACTUAL = 'Cristobal Cordova';
 
 function AssignedProposals({propuestas, propuestasError, entregables, setFormData, onNavigate, currentView, onSelectDeliverable}) {
   const propuestasAsignadas = propuestas.filter(
     (propuesta) => propuesta.profesor === CORREFERENTE_ACTUAL,
+  );
+  const entregablesPendientes = entregables.filter(
+    (entregable) => entregable.estado === 'Pendiente de Revisión',
   );
 
   function openEvaluation(propuesta, documento) {
@@ -32,6 +36,15 @@ function AssignedProposals({propuestas, propuestasError, entregables, setFormDat
         <div className="mt-10 md:mt-16 w-full max-w-4xl px-4">
             <h2 className="text-white text-2xl md:text-3xl font-bold mb-6">Propuestas Asignadas</h2>
             {propuestasError && <p className="text-red-300 font-bold mb-4">{propuestasError}</p>}
+            {entregablesPendientes.length > 0 && (
+                <div role="alert" className="bg-[#fef3c7] text-[#92400e] rounded-2xl p-4 mb-6 border border-[#f59e0b]">
+                    <p className="font-bold">Nuevo documento pendiente de revisión</p>
+                    <p className="text-sm">
+                        El memorista envió {entregablesPendientes.length === 1 ? 'un avance' : `${entregablesPendientes.length} avances`}.
+                        Revisa la propuesta asignada para ver los documentos.
+                    </p>
+                </div>
+            )}
             {propuestasAsignadas.length === 0 && !propuestasError && (
                 <div className="bg-[#27272a] rounded-2xl p-6 border border-gray-600 text-gray-300">
                     No hay propuestas asignadas a {CORREFERENTE_ACTUAL}.
@@ -51,7 +64,7 @@ function AssignedProposals({propuestas, propuestasError, entregables, setFormDat
                             } : null);
                             return (
                                 <>
-                        <div className="absolute -top-3 left-6 md:left-8 bg-[#eab308] text-white font-bold text-[10px] px-3 py-1 rounded-full">
+                        <div className={`absolute -top-3 left-6 md:left-8 ${getStatusColorClass(propuesta.estado)} text-white font-bold text-[10px] px-3 py-1 rounded-full`}>
                             {propuesta.estado}
                         </div>
                         <h3 className="text-white text-lg md:text-xl font-bold mt-4 mb-4">{propuesta.titulo}</h3>

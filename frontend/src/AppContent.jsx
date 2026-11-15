@@ -11,6 +11,7 @@ import AssignedProposals from './pages/AssignedProposals';
 import ProposalEvaluation from './pages/ProposalEvaluation';
 import UploadDeliverable from './pages/UploadDeliverable';
 import { listarEntregables, listarPropuestas } from './lib/api';
+import SecretariaReportes from './pages/SecretariaReportes';
 
 const propuestasLista = [
     {
@@ -92,6 +93,27 @@ export default function AppContent() {
     setEntregables((currentEntregables) => [...currentEntregables, entregable]);
   }
 
+  function handleDeliverableEvaluated(entregableId, propuestaId) {
+    setEntregables((currentEntregables) => currentEntregables.map((entregable) => (
+      String(entregable.id) === String(entregableId)
+        ? { ...entregable, estado: 'Revisado' }
+        : entregable
+    )));
+    setPropuestas((currentPropuestas) => currentPropuestas.map((propuesta) => (
+      String(propuesta.id) === String(propuestaId)
+        ? { ...propuesta, estado: 'Autorizada' }
+        : propuesta
+    )));
+  }
+
+  function handleProposalEvaluated(propuestaId, estado) {
+    setPropuestas((currentPropuestas) => currentPropuestas.map((propuesta) => (
+      String(propuesta.id) === String(propuestaId)
+        ? { ...propuesta, estado }
+        : propuesta
+    )));
+  }
+
   const pageProps = {
     currentView,
     onNavigate: setCurrentView,
@@ -104,6 +126,8 @@ export default function AppContent() {
     entregables,
     entregablesError,
     onDeliverableCreated: handleDeliverableCreated,
+    onDeliverableEvaluated: handleDeliverableEvaluated,
+    onProposalEvaluated: handleProposalEvaluated,
     selectedDeliverable,
     onSelectDeliverable: setSelectedDeliverable,
   };
@@ -115,6 +139,7 @@ export default function AppContent() {
     'subir-entregable': <UploadDeliverable {...pageProps} />,
     'propuestas-disponibles': <AvailableProposals {...pageProps} />, 'propuestas-asignadas': <AssignedProposals {...pageProps} />,
     'evaluacion-propuesta': <ProposalEvaluation {...pageProps} />,
+    'secretaria-reportes': <SecretariaReportes {...pageProps} />,
   };
 
   return pages[currentView] || pages.login;

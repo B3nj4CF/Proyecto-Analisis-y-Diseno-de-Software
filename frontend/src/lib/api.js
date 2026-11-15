@@ -47,12 +47,10 @@ export async function listarPropuestas() {
 
 // --- MÓDULO DE ENTREGABLES (API ENTREGABLES - Puerto 3001) ---
 export async function listarEntregables(propuestaId) {
-  // Si el ID no existe o es la palabra 'undefined', detenemos la petición de inmediato
-  if (!propuestaId || propuestaId === 'undefined') {
-    return [];
-  }
-  
-  const response = await fetch(`${API_ENTREGABLES_URL}/api/entregables/propuesta/${propuestaId}`);
+  const endpoint = propuestaId && propuestaId !== 'undefined'
+    ? `/api/entregables/propuesta/${propuestaId}`
+    : '/api/entregables';
+  const response = await fetch(`${API_ENTREGABLES_URL}${endpoint}`);
   return parseResponse(response, 'No se pudieron cargar los entregables.');
 }
 
