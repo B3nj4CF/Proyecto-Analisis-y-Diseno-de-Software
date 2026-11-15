@@ -66,3 +66,12 @@ export async function consultarVistosBuenos(propuestaId) {
   await comprobar(response, 'No se pudieron consultar los vistos buenos.');
   return response.json();
 }
+
+export async function validarCierre(propuestaId) {
+  const response = await fetch(`${RUTA}/${propuestaId}/cierre`, {
+    method: 'POST',
+    headers: { 'X-Demo-Role': 'jefe-carrera' },
+  });
+  await comprobar(response, 'No se pudo validar el cierre.');
+  return response.json();
+}
