@@ -26,9 +26,11 @@ function soloSecretaria(req, res, next) {
 }
 
 function respuesta(row, id) {
+  const notaFinal = row?.nota_final ?? null;
   return {
     propuesta_id: Number(id), nota_escrita: row?.nota_escrita ?? null,
-    nota_oral: row?.nota_oral ?? null, nota_final: row?.nota_final ?? null,
+    nota_oral: row?.nota_oral ?? null, nota_final: notaFinal,
+    nota_aprobada: notaFinal !== null && Number(notaFinal) >= 70,
     reporte_generado: row?.reporte_generado ?? false,
     pdf_conservado: Boolean(row?.pdf_snapshot), fecha_reporte: row?.fecha_reporte ?? null,
     ponderacion: PONDERACION
@@ -66,8 +68,48 @@ async function guardarNotas(req, res) {
             actualizado_en = CURRENT_TIMESTAMP
       RETURNING *
     `, [id, nota_escrita, nota_oral]);
-    return res.status(200).json(respuesta(result.rows[0], id));
+    const salida = respuesta(result.rows[0], id);
+    return res.status(200).json({
+      ...salida,
+      advertencia: salida.nota_aprobada
+        ? null
+        : 'La nota final es menor a 70. Jefatura no podrá cerrar el proceso.',
+    });
   } catch (error) { return errorHttp(res, error); }
+}
+
+async function validarCierre(req, res) {
+  if (req.get('X-Demo-Role') !== 'jefe-carrera') {
+    return res.status(403).json({ error: 'Solo Jefatura puede validar el cierre.' });
+  }
+  if (!validarId(req, res)) return;
+  try {
+    const id = req.params.propuesta_id;
+    const propuesta = await academica.propuesta(id);
+    if (propuesta.estado !== 'Habilitado para Defensa') {
+      return res.status(409).json({ error: 'La memoria debe estar habilitada para defensa.' });
+    }
+    const result = await database.query(
+      'SELECT * FROM reportes_memoria WHERE propuesta_id = $1',
+      [id],
+    );
+    const reporte = result.rows[0];
+    if (!reporte?.reporte_generado) {
+      return res.status(409).json({ error: 'Secretaría debe generar el reporte antes del cierre.' });
+    }
+    if (reporte.nota_final === null || Number(reporte.nota_final) < 70) {
+      return res.status(409).json({ error: 'La nota final de defensa es menor a 70. No se puede cerrar el proceso.' });
+    }
+    const actualizada = await academica.actualizarEstado(id, 'Cerrado');
+    return res.status(200).json({
+      propuesta: actualizada,
+      estado: 'Cerrado',
+      nota_final: reporte.nota_final,
+      mensaje: 'Cierre validado correctamente.',
+    });
+  } catch (error) {
+    return errorHttp(res, error);
+  }
 }
 
 async function generarReporte(req, res) {
@@ -218,4 +260,5 @@ module.exports = {
   descargarReporte,
   otorgarVistoBueno,
   consultarVistosBuenos,
+  validarCierre,
 };

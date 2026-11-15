@@ -101,6 +101,11 @@ function SecretariaReportes({ onNavigate, currentView }) {
           </div>
           <div className="mt-4 rounded-xl bg-slate-100 p-4"><p className="text-xs text-slate-600">Nota final ponderada</p>
             <p className="text-3xl font-extrabold text-blue-700">{promedio ?? '--'}</p></div>
+          {promedio !== null && <p className={`mt-3 rounded-lg p-3 text-xs font-bold ${promedio >= 70 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+            {promedio >= 70
+              ? 'Nota de defensa aprobada. El reporte podrá ser validado por Jefatura.'
+              : 'Nota de defensa reprobada. El cierre del proceso quedará bloqueado hasta registrar una nota aprobatoria.'}
+          </p>}
           {error && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-800">{error}</p>}
           {mensaje && <p role="status" className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">{mensaje}</p>}
           <div className="mt-5 flex flex-wrap gap-2">

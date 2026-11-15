@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Navbar from '../components/Navbar';
 import { actualizarEstadoPropuesta, eliminarPropuesta } from '../lib/api';
 import { otorgarVistoBueno } from '../lib/reportes';
-import { consultarVistosBuenos } from '../lib/reportes';
+import { consultarVistosBuenos, validarCierre } from '../lib/reportes';
 
 function JefeCarreraHome({ propuestas, propuestasError, onNavigate, currentView, onProposalEvaluated, onSelectProposal }) {
   const [procesando, setProcesando] = useState('');
@@ -32,8 +32,13 @@ function JefeCarreraHome({ propuestas, propuestasError, onNavigate, currentView,
     setError('');
     setMensaje('');
     try {
-      await actualizarEstadoPropuesta(propuesta.id, estado);
-      onProposalEvaluated(propuesta.id, estado);
+      const propuestaId = propuesta.id || propuesta._id;
+      if (estado === 'Cerrado') {
+        await validarCierre(propuestaId);
+      } else {
+        await actualizarEstadoPropuesta(propuestaId, estado);
+      }
+      onProposalEvaluated(propuestaId, estado);
       setMensaje(`La propuesta #${propuesta.id} quedó en estado "${estado}".`);
     } catch (actionError) {
       setError(actionError.message);

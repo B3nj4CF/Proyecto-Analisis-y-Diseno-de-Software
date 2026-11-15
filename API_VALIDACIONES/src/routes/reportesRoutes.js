@@ -9,6 +9,7 @@ router.post('/:propuesta_id/reporte', controller.soloSecretaria, controller.gene
 router.get('/:propuesta_id/reporte.pdf', controller.descargarReporte);
 router.post('/:propuesta_id/visto-bueno', controller.otorgarVistoBueno);
 router.get('/:propuesta_id/visto-bueno', controller.consultarVistosBuenos);
+router.post('/:propuesta_id/cierre', controller.validarCierre);
 
 // HU-09: contrato de rechazo del intento de cierre por Secretaría.
 // No se modifica el estado; HU-10 implementará el cierre autorizado.
