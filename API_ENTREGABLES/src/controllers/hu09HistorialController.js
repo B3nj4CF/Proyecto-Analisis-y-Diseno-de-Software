@@ -14,7 +14,7 @@ async function obtenerHistorial(req, res) {
       LEFT JOIN evaluaciones_entregables v ON v.entregable_id = e.id
       WHERE e.propuesta_id = $1
       GROUP BY e.id
-      ORDER BY e.fecha_subida ASC
+      ORDER BY e.fecha_subida DESC, e.id DESC
     `, [propuestaId]);
     return res.status(200).json(result.rows);
   } catch (error) {

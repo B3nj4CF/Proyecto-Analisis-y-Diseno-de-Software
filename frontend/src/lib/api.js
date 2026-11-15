@@ -1,6 +1,7 @@
 // Definimos los puertos de tus microservicios en Node.js (según tu docker-compose)
 const API_ENTREGABLES_URL = import.meta.env.VITE_API_ENTREGABLES_URL || 'http://127.0.0.1:3001';
 const API_TRAMITACION_URL = import.meta.env.VITE_API_TRAMITACION_URL || 'http://127.0.0.1:3002';
+export const API_VALIDACIONES_URL = import.meta.env.VITE_API_VALIDACIONES_URL || 'http://127.0.0.1:3003';
 export { API_ENTREGABLES_URL, API_TRAMITACION_URL };
 
 async function parseResponse(response, defaultMessage) {
@@ -47,11 +48,22 @@ export async function listarPropuestas() {
 
 // --- MÓDULO DE ENTREGABLES (API ENTREGABLES - Puerto 3001) ---
 export async function listarEntregables(propuestaId) {
-  const endpoint = propuestaId && propuestaId !== 'undefined'
-    ? `/api/entregables/propuesta/${propuestaId}`
-    : '/api/entregables';
+  if (!propuestaId || propuestaId === 'undefined') {
+    return [];
+  }
+  const endpoint = `/api/entregables/propuesta/${propuestaId}`;
   const response = await fetch(`${API_ENTREGABLES_URL}${endpoint}`);
   return parseResponse(response, 'No se pudieron cargar los entregables.');
+}
+
+export async function listarHistorialEntregables(propuestaId) {
+  const response = await fetch(`${API_ENTREGABLES_URL}/api/entregables/propuesta/${propuestaId}/historial`);
+  return parseResponse(response, 'No se pudo cargar el historial de entregables.');
+}
+
+export async function listarEvaluacionesPropuesta(propuestaId) {
+  const response = await fetch(`${API_TRAMITACION_URL}/api/propuestas/${propuestaId}/evaluaciones`);
+  return parseResponse(response, 'No se pudieron cargar las evaluaciones de la propuesta.');
 }
 
 export async function subirEntregable(data) {
@@ -87,6 +99,20 @@ export async function crearEvaluacion(entregableId, datos) {
   return parseResponse(response, 'No se pudo guardar la evaluación.');
 }
 
+export async function listarComentariosEntregable(entregableId) {
+  const response = await fetch(`${API_ENTREGABLES_URL}/api/entregables/${entregableId}/comentarios`);
+  return parseResponse(response, 'No se pudieron cargar las observaciones.');
+}
+
+export async function crearComentarioEntregable(entregableId, datos) {
+  const response = await fetch(`${API_ENTREGABLES_URL}/api/entregables/${entregableId}/comentarios`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(datos),
+  });
+  return parseResponse(response, 'No se pudo guardar la observación.');
+}
+
 export async function crearEvaluacionPropuesta(propuestaId, datos) {
   const response = await fetch(
     `${API_TRAMITACION_URL}/api/propuestas/${propuestaId}/evaluaciones`,
@@ -97,4 +123,27 @@ export async function crearEvaluacionPropuesta(propuestaId, datos) {
     }
   );
   return parseResponse(response, 'No se pudo guardar la evaluación de la propuesta.');
+}
+
+export async function actualizarEstadoPropuesta(propuestaId, estado) {
+  const response = await fetch(`${API_TRAMITACION_URL}/api/propuestas/${propuestaId}/estado`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'X-Demo-Role': 'jefe-carrera' },
+    body: JSON.stringify({ estado }),
+  });
+  return parseResponse(response, 'No se pudo actualizar el estado de la propuesta.');
+}
+
+export async function editarPropuesta(propuestaId, datos) {
+  const response = await fetch(`${API_TRAMITACION_URL}/api/propuestas/${propuestaId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(datos),
+  });
+  return parseResponse(response, 'No se pudo reenviar la propuesta.');
+}
+
+export async function eliminarPropuesta(propuestaId) {
+  const response = await fetch(`${API_TRAMITACION_URL}/api/propuestas/${propuestaId}`, { method: 'DELETE' });
+  return parseResponse(response, 'No se pudo eliminar la propuesta.');
 }

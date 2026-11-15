@@ -3,22 +3,22 @@ import imgEstudiantes from '../assets/gente-pequena-enfocada-leyendo-libros.png'
 
 function SignUp({onNavigate}) {
   return (
-    <div className="min-h-screen bg-[#161c1f] flex items-center justify-center p-4 md:p-6 font-sans">
+    <div className="min-h-screen bg-[#f4f7fa] flex items-center justify-center p-4 md:p-6 font-sans">
       <div className="max-w-6xl w-full flex flex-col md:flex-row items-center justify-center gap-10 lg:gap-20">
         <div className="flex flex-col items-center justify-center w-full max-w-md">
           <div className="p-2 mb-4 w-full flex flex-col items-center">
             <div className="flex items-center gap-6 mb-2">
               <img src={logoUsm} alt="Logo UTFSM" className="w-24 lg:w-28 h-auto object-contain" />
-              <h1 className="text-white text-6xl lg:text-7xl font-black tracking-widest leading-none">SGM</h1>
+              <h1 className="text-[#0c1d36] text-6xl lg:text-7xl font-black tracking-widest leading-none">SGM</h1>
             </div>
-            <h2 className="text-white text-lg lg:text-xl font-bold mt-3 text-center">Sistema de Gestión de Memorias</h2>
+            <h2 className="text-[#07558d] text-lg lg:text-xl font-bold mt-3 text-center">Sistema de Gestión de Memorias</h2>
           </div>
           <div className="w-full max-w-xs md:max-w-sm mt-4">
              <img src={imgEstudiantes} alt="Estudiantes" className="w-full h-auto object-contain mix-blend-lighten" />
           </div>
         </div>
         <div className="bg-[#f8f9fa] rounded-[2rem] p-8 lg:p-10 w-full max-w-[400px] shadow-2xl">
-          <h2 className="text-3xl lg:text-4xl font-extrabold text-center mb-8 font-mono tracking-widest text-black">Sign Up</h2>
+          <h2 className="text-3xl lg:text-4xl font-extrabold text-center mb-8 tracking-widest text-[#0c1d36]">Crear cuenta</h2>
           <div className="space-y-5">
             <input type="text" placeholder="User Name" className="w-full border border-gray-400 rounded-xl px-5 py-3 text-sm outline-none focus:border-blue-500 placeholder-black font-mono font-bold bg-transparent" />
             <div className="relative">
@@ -31,8 +31,8 @@ function SignUp({onNavigate}) {
                 I accept the Terms of Service.
               </label>
             </div>
-            <button onClick={() => onNavigate('selector-cargo')} className="w-full bg-gradient-to-r from-[#2dd4bf] to-[#034694] text-white font-bold py-3.5 rounded-xl mt-4 hover:opacity-90 transition-opacity shadow-md text-lg font-sans">
-              Sign In
+            <button onClick={() => onNavigate('selector-cargo')} className="w-full bg-[#07558d] text-white font-bold py-3.5 rounded-xl mt-4 hover:bg-[#064675] transition shadow-md text-lg font-sans">
+              Crear cuenta
             </button>
             <p className="text-center text-[10px] font-bold mt-6 font-mono text-black">
               You already have an account. <button onClick={() => onNavigate('login')} className="hover:underline font-extrabold underline">Sing In</button>

@@ -44,4 +44,19 @@ async function historial(id) {
   return { evaluaciones, entregables };
 }
 
-module.exports = { propuesta, historial };
+async function actualizarEstado(id, estado) {
+  const response = await fetch(`${API_TRAMITACION}/api/propuestas/${id}/estado`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ estado }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const problema = new Error(body.error || 'No se pudo actualizar el estado de la propuesta.');
+    problema.status = response.status >= 400 && response.status < 500 ? response.status : 502;
+    throw problema;
+  }
+  return response.json();
+}
+
+module.exports = { propuesta, historial, actualizarEstado };
