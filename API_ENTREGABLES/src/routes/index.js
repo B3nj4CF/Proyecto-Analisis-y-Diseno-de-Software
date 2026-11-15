@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const db = require('../db');
 const pool = db.pool || db;
+const TRAMITACION_API_URL = process.env.TRAMITACION_API_URL || 'http://api_tramitacion:3002';
 
 const router = express.Router();
 const hu09Historial = require('../controllers/hu09HistorialController');
@@ -61,6 +62,40 @@ router.post('/entregables/upload', (req, res, next) => {
       });
     }
 
+    const etapaNormalizada = etapa.trim().toLowerCase();
+    const etapas = {
+      'avance 1': 'Avance 1',
+      'avance 2': 'Avance 2',
+      'trabajo escrito final': 'Trabajo escrito final',
+    };
+    if (!etapas[etapaNormalizada]) {
+      return res.status(400).json({ error: 'La etapa indicada no es válida.' });
+    }
+    const propuestaResponse = await fetch(`${TRAMITACION_API_URL}/api/propuestas/${propuesta_id}`);
+    if (!propuestaResponse.ok) {
+      return res.status(404).json({ error: 'No se pudo verificar la propuesta.' });
+    }
+    const propuesta = await propuestaResponse.json();
+    if (etapaNormalizada !== 'avance 2' && propuesta.estado !== 'Autorizada') {
+      return res.status(409).json({ error: `La propuesta está "${propuesta.estado}". Debe quedar "Autorizada" por Jefatura antes de subir esta etapa.` });
+    }
+    if (etapaNormalizada !== 'avance 1') {
+      const etapaPrevia = etapaNormalizada === 'avance 2' ? 'Avance 1' : 'Avance 2';
+      const previous = await pool.query(`
+        SELECT EXISTS (
+          SELECT 1
+          FROM entregables e
+          INNER JOIN evaluaciones_entregables v ON v.entregable_id = e.id
+          WHERE e.propuesta_id = $1
+            AND LOWER(TRIM(e.etapa)) = LOWER(TRIM($2))
+            AND v.nota >= 70
+        ) AS aprobado
+      `, [propuesta_id, etapaPrevia]);
+      if (!previous.rows[0]?.aprobado) {
+        return res.status(409).json({ error: `Debes aprobar ${etapaPrevia} antes de continuar.` });
+      }
+    }
+
     // Persistencia en base de datos con fecha exacta y estado 'Pendiente de Revisión' (HU-04)
     const query = `
       INSERT INTO entregables (
@@ -112,7 +147,7 @@ router.get('/entregables/propuesta/:propuesta_id', async (req, res) => {
       SELECT id, propuesta_id, etapa, nombre_archivo, fecha_subida, estado
       FROM entregables
       WHERE propuesta_id = $1
-      ORDER BY fecha_subida DESC;
+      ORDER BY fecha_subida DESC, id DESC;
     `;
 
     const { rows } = await pool.query(query, [propuesta_id]);
@@ -124,6 +159,60 @@ router.get('/entregables/propuesta/:propuesta_id', async (req, res) => {
     return res.status(500).json({
       error: 'Error interno al consultar la base de datos de entregables.'
     });
+  }
+});
+
+router.post('/entregables/:entregable_id/evaluaciones', async (req, res) => {
+  try {
+    const { entregable_id } = req.params;
+    const { evaluador_nombre, nota, comentarios, confirmacion_reprobacion = false } = req.body;
+    const numericNota = Number(nota);
+    if (!evaluador_nombre || !Number.isInteger(numericNota) || numericNota < 0 || numericNota > 100 || !comentarios || comentarios.trim().length < 5) {
+      return res.status(400).json({ error: 'Datos de evaluación inválidos.' });
+    }
+    const result = await pool.query('SELECT propuesta_id FROM entregables WHERE id = $1', [entregable_id]);
+    if (!result.rowCount) return res.status(404).json({ error: 'El entregable no existe.' });
+    const evaluation = await pool.query(`
+      INSERT INTO evaluaciones_entregables
+        (entregable_id, evaluador_nombre, nota, comentarios, confirmacion_reprobacion)
+      VALUES ($1, $2, $3, $4, $5) RETURNING *
+    `, [entregable_id, evaluador_nombre, numericNota, comentarios.trim(), Boolean(confirmacion_reprobacion)]);
+    await pool.query("UPDATE entregables SET estado = 'Revisado' WHERE id = $1", [entregable_id]);
+    return res.status(201).json({ ...evaluation.rows[0], propuesta_id: result.rows[0].propuesta_id });
+  } catch (error) {
+    console.error('Error al guardar la evaluación del entregable:', error);
+    return res.status(500).json({ error: 'No se pudo guardar la evaluación.' });
+  }
+});
+
+router.get('/entregables/:entregable_id/comentarios', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, entregable_id, autor_nombre, rol, contenido, fecha_creacion FROM comentarios_entregables WHERE entregable_id = $1 ORDER BY fecha_creacion ASC',
+      [req.params.entregable_id],
+    );
+    return res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error al consultar observaciones:', error);
+    return res.status(500).json({ error: 'No se pudieron cargar las observaciones.' });
+  }
+});
+
+router.post('/entregables/:entregable_id/comentarios', async (req, res) => {
+  try {
+    const { autor_nombre, rol, contenido } = req.body;
+    if (!autor_nombre || autor_nombre.trim().length < 2 || !contenido || contenido.trim().length < 5) {
+      return res.status(400).json({ error: 'Datos de observación inválidos.' });
+    }
+    const result = await pool.query(
+      `INSERT INTO comentarios_entregables (entregable_id, autor_nombre, rol, contenido)
+       VALUES ($1, $2, $3, $4) RETURNING id, entregable_id, autor_nombre, rol, contenido, fecha_creacion`,
+      [req.params.entregable_id, autor_nombre.trim(), rol || 'Profesor Guía', contenido.trim()],
+    );
+    return res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al guardar observación:', error);
+    return res.status(500).json({ error: 'No se pudo guardar la observación.' });
   }
 });
 

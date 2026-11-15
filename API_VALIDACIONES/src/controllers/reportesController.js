@@ -113,4 +113,109 @@ async function descargarReporte(req, res) {
   } catch (error) { return errorHttp(res, error); }
 }
 
-module.exports = { soloSecretaria, consultarReporte, guardarNotas, generarReporte, descargarReporte };
+async function otorgarVistoBueno(req, res) {
+  const rol = req.get('X-Demo-Role');
+  if (!['co-guia', 'profesor-guia', 'jefe-carrera'].includes(rol)) {
+    return res.status(403).json({ error: 'Solo el co-guía, Profesor Guía o Jefe de Carrera pueden otorgar el visto bueno.' });
+  }
+  if (!validarId(req, res)) return;
+  try {
+    const id = req.params.propuesta_id;
+    const { evaluaciones, entregables } = await academica.historial(id);
+    const propuesta = await academica.propuesta(id);
+    const evaluacionPropuesta = evaluaciones.at(-1);
+    const tieneEvaluacionAprobada = (etapa) => entregables
+      .filter((item) => item.etapa?.trim().toLowerCase() === etapa.trim().toLowerCase())
+      .some((item) => (item.evaluaciones || []).some((evaluacion) => Number(evaluacion.nota) >= 70));
+    const avance1Aprobado = tieneEvaluacionAprobada('Avance 1');
+    const avance2Aprobado = tieneEvaluacionAprobada('Avance 2');
+    const trabajoFinal = entregables
+      .filter((item) => item.etapa?.trim().toLowerCase() === 'trabajo escrito final')
+      .flatMap((item) => item.evaluaciones || [])
+      .some((evaluacion) => Number(evaluacion.nota) >= 70);
+    if (!['Aprobada por Guía', 'Autorizada'].includes(propuesta.estado)) {
+      return res.status(409).json({ error: 'La propuesta debe estar aprobada y autorizada antes de habilitar el examen.' });
+    }
+    if (!evaluacionPropuesta || Number(evaluacionPropuesta.nota) < 70) {
+      return res.status(409).json({ error: 'La evaluación de la propuesta aún no está aprobada.' });
+    }
+    if (!avance1Aprobado) {
+      return res.status(409).json({ error: 'El Avance 1 debe estar aprobado antes de continuar.' });
+    }
+    if (!avance2Aprobado) {
+      return res.status(409).json({ error: 'El Avance 2 debe estar aprobado antes de solicitar el visto bueno.' });
+    }
+    if (!trabajoFinal) {
+      return res.status(409).json({ error: 'El trabajo escrito final debe estar evaluado y aprobado antes del visto bueno.' });
+    }
+
+    await database.query(`
+      ALTER TABLE validaciones
+      ADD COLUMN IF NOT EXISTS rol VARCHAR(50)
+    `);
+
+    if (rol === 'jefe-carrera') {
+      const vistoBuenoCoGuia = await database.query(`
+        SELECT id FROM validaciones
+        WHERE propuesta_id = $1 AND resultado = 'VISTO_BUENO_EXAMEN' AND rol IN ('co-guia', 'profesor-guia')
+        ORDER BY fecha_validacion DESC, id DESC
+        LIMIT 1
+      `, [id]);
+      if (!vistoBuenoCoGuia.rowCount) {
+        return res.status(409).json({ error: 'Primero debe registrar su visto bueno el co-guía después de aprobar el Avance 2.' });
+      }
+    }
+
+    await database.query(`
+      INSERT INTO validaciones (propuesta_id, resultado, observaciones, rol)
+      VALUES ($1, 'VISTO_BUENO_EXAMEN', $2, $3)
+    `, [id, `Visto bueno para examen registrado por ${rol}.`, rol]);
+
+    if (rol !== 'jefe-carrera') {
+      return res.status(200).json({
+        propuesta,
+        estado: propuesta.estado,
+        visto_bueno_co_guia: true,
+        mensaje: 'Visto bueno del co-guía registrado. Ahora Jefatura puede habilitar el examen final.',
+      });
+    }
+
+    const actualizada = await academica.actualizarEstado(id, 'Habilitado para Defensa');
+    return res.status(200).json({
+      propuesta: actualizada,
+      estado: 'Habilitado para Defensa',
+      mensaje: 'Visto bueno del co-guía y Jefatura registrados. La memoria quedó habilitada para solicitar el examen final.',
+    });
+  } catch (error) {
+    return errorHttp(res, error);
+  }
+}
+
+async function consultarVistosBuenos(req, res) {
+  if (!validarId(req, res)) return;
+  try {
+    await database.query('ALTER TABLE validaciones ADD COLUMN IF NOT EXISTS rol VARCHAR(50)');
+    const result = await database.query(`
+      SELECT rol, fecha_validacion
+      FROM validaciones
+      WHERE propuesta_id = $1 AND resultado = 'VISTO_BUENO_EXAMEN'
+      ORDER BY fecha_validacion ASC, id ASC
+    `, [req.params.propuesta_id]);
+    return res.status(200).json({
+      co_guia: result.rows.some((row) => ['co-guia', 'profesor-guia'].includes(row.rol)),
+      jefe_carrera: result.rows.some((row) => row.rol === 'jefe-carrera'),
+    });
+  } catch (error) {
+    return errorHttp(res, error);
+  }
+}
+
+module.exports = {
+  soloSecretaria,
+  consultarReporte,
+  guardarNotas,
+  generarReporte,
+  descargarReporte,
+  otorgarVistoBueno,
+  consultarVistosBuenos,
+};

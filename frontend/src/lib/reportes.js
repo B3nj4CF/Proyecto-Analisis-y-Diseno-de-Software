@@ -51,3 +51,18 @@ export async function descargarReporte(propuestaId) {
   enlace.remove();
   setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
 }
+
+export async function otorgarVistoBueno(propuestaId, rol = 'co-guia') {
+  const response = await fetch(`${RUTA}/${propuestaId}/visto-bueno`, {
+    method: 'POST',
+    headers: { 'X-Demo-Role': rol },
+  });
+  await comprobar(response, 'No se pudo otorgar el visto bueno.');
+  return response.json();
+}
+
+export async function consultarVistosBuenos(propuestaId) {
+  const response = await fetch(`${RUTA}/${propuestaId}/visto-bueno`);
+  await comprobar(response, 'No se pudieron consultar los vistos buenos.');
+  return response.json();
+}

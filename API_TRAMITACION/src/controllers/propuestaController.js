@@ -90,8 +90,27 @@ const actualizarEstadoPropuesta = async (req, res) => {
     const { estado } = req.body;
     const propuestaId = req.params.propuesta_id;
 
-    if (estado !== 'Autorizada') {
+    if (!['Autorizada', 'Habilitado para Defensa', 'Cerrado'].includes(estado)) {
       return res.status(400).json({ error: 'Estado de propuesta inválido' });
+    }
+    if (estado === 'Autorizada' && req.get('X-Demo-Role') !== 'jefe-carrera') {
+      return res.status(403).json({ error: 'Solo Jefatura puede autorizar el inicio de la memoria.' });
+    }
+    if (estado === 'Cerrado' && req.get('X-Demo-Role') !== 'jefe-carrera') {
+      return res.status(403).json({ error: 'Solo Jefatura puede cerrar la memoria.' });
+    }
+
+    const actual = await pool.query('SELECT estado FROM propuestas WHERE id = $1', [propuestaId]);
+    if (actual.rowCount === 0) {
+      return res.status(404).json({ error: 'Propuesta no encontrada' });
+    }
+    const transicionValida = estado === 'Autorizada'
+      ? actual.rows[0].estado === 'Aprobada por Guía'
+      : estado === 'Cerrado'
+        ? actual.rows[0].estado === 'Habilitado para Defensa'
+        : true;
+    if (!transicionValida) {
+      return res.status(409).json({ error: `No se puede cambiar desde "${actual.rows[0].estado}" a "${estado}".` });
     }
 
     const result = await pool.query(
@@ -107,6 +126,55 @@ const actualizarEstadoPropuesta = async (req, res) => {
   } catch (error) {
     console.error('Error al actualizar el estado de la propuesta:', error);
     return res.status(500).json({ error: 'No se pudo actualizar el estado de la propuesta' });
+  }
+};
+
+const editarPropuesta = async (req, res) => {
+  try {
+    const propuestaId = req.params.propuesta_id;
+    const {
+      titulo, resumen, problema_ingenieria, objetivos, bibliografia,
+      memorista, rut, rol_usm, celular, campus, modalidad, profesor,
+    } = req.body || {};
+    if (![titulo, resumen, problema_ingenieria, objetivos, bibliografia].every((value) => String(value || '').trim())) {
+      return res.status(400).json({ error: 'Título, resumen, problema, objetivos y bibliografía son obligatorios.' });
+    }
+    const result = await pool.query(`
+      UPDATE propuestas
+      SET titulo = $1, resumen = $2, problema_ingenieria = $3, objetivos = $4,
+          bibliografia = $5, memorista = COALESCE($6, memorista), rut = COALESCE($7, rut),
+          rol_usm = COALESCE($8, rol_usm), celular = COALESCE($9, celular),
+          campus = COALESCE($10, campus), modalidad = COALESCE($11, modalidad),
+          profesor = COALESCE($12, profesor), estado = 'En revisión'
+      WHERE id = $13 AND estado = 'Rechazada por Guía'
+      RETURNING *
+    `, [titulo.trim(), resumen.trim(), problema_ingenieria.trim(), objetivos.trim(),
+      bibliografia.trim(), memorista, rut, rol_usm, celular, campus, modalidad, profesor, propuestaId]);
+    if (!result.rowCount) {
+      return res.status(409).json({ error: 'Solo se pueden editar propuestas rechazadas.' });
+    }
+    return res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al editar propuesta:', error);
+    return res.status(500).json({ error: 'No se pudo reenviar la propuesta.' });
+  }
+};
+
+const eliminarPropuesta = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `DELETE FROM propuestas
+       WHERE id = $1 AND estado IN ('En revisión', 'Rechazada por Guía')
+       RETURNING id`,
+      [req.params.propuesta_id],
+    );
+    if (!result.rowCount) {
+      return res.status(409).json({ error: 'Solo se pueden eliminar propuestas en revisión o rechazadas.' });
+    }
+    return res.status(200).json({ id: result.rows[0].id, mensaje: 'Propuesta eliminada correctamente.' });
+  } catch (error) {
+    console.error('Error al eliminar propuesta:', error);
+    return res.status(500).json({ error: 'No se pudo eliminar la propuesta.' });
   }
 };
 
@@ -189,6 +257,8 @@ module.exports = {
   listarPropuestas,
   obtenerPropuesta,
   actualizarEstadoPropuesta,
+  editarPropuesta,
+  eliminarPropuesta,
   getProposalFile,
   evaluarPropuesta,
   uploadMiddleware: uploadPropuesta.single('archivo'),

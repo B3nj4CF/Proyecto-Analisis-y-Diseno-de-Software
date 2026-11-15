@@ -62,13 +62,12 @@ function SecretariaReportes({ onNavigate, currentView }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#161c1f] font-sans flex flex-col items-center">
+    <div className="min-h-screen bg-[#f4f7fa] font-sans text-[#10233f]">
       <Navbar role="secretaria" currentView={currentView} onNavigate={onNavigate} />
-      <main className="w-full max-w-3xl px-4 py-10 md:py-14">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-white">Generar reporte de estado</h1>
-        <p className="mt-2 text-sm text-gray-300">Consulta los procesos de memoria, registra las calificaciones y descarga el reporte académico.</p>
+      <main className="mx-auto w-full max-w-3xl px-4 py-8 md:py-10">
+        <div className="mb-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-[10px] font-bold uppercase tracking-wide text-orange-500">Validaciones y reportes</p><h1 className="mt-1 text-2xl font-black text-[#0c1d36]">Generar reporte de estado</h1><p className="mt-2 text-sm text-slate-500">Consulta los procesos, registra calificaciones y descarga el reporte académico.</p></div>
 
-        <section className="mt-7 rounded-2xl bg-white p-6 shadow-xl">
+        <section className="mt-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-extrabold text-gray-900">1. Seleccionar memoria</h2>
           <label htmlFor="memoria-hu09" className="mt-5 mb-2 block text-sm font-bold">Memoria</label>
           <select id="memoria-hu09" className={estiloCampo} value={propuestaId}
@@ -90,7 +89,7 @@ function SecretariaReportes({ onNavigate, currentView }) {
           </div>}
         </section>
 
-        {seleccionada && <section className="mt-5 rounded-2xl bg-white p-6 shadow-xl">
+        {seleccionada && <section className="mt-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-extrabold text-gray-900">2. Calificaciones</h2>
           <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div><label htmlFor="escrita-hu09" className="mb-2 block text-sm font-bold">Nota escrita (60 %)</label>

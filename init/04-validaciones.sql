@@ -6,3 +6,6 @@ CREATE TABLE IF NOT EXISTS validaciones (
     observaciones TEXT,
     fecha_validacion TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE validaciones
+  ADD COLUMN IF NOT EXISTS rol VARCHAR(50);

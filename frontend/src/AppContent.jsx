@@ -12,6 +12,9 @@ import ProposalEvaluation from './pages/ProposalEvaluation';
 import UploadDeliverable from './pages/UploadDeliverable';
 import { listarEntregables, listarPropuestas } from './lib/api';
 import SecretariaReportes from './pages/SecretariaReportes';
+import ProposalDetails from './pages/ProposalDetails';
+import JefeCarreraHome from './pages/JefeCarreraHome';
+import EditProposal from './pages/EditProposal';
 
 const propuestasLista = [
     {
@@ -63,6 +66,7 @@ export default function AppContent() {
   const [entregables, setEntregables] = useState([]);
   const [entregablesError, setEntregablesError] = useState('');
   const [selectedDeliverable, setSelectedDeliverable] = useState(null);
+  const [selectedProposal, setSelectedProposal] = useState(null);
 
   useEffect(() => {
     async function loadPropuestas() {
@@ -73,10 +77,16 @@ export default function AppContent() {
       }
     }
 
-    loadPropuestas();
     async function loadEntregables() {
       try {
-        setEntregables(await listarEntregables());
+        const propuestasCargadas = await listarPropuestas();
+        setPropuestas(propuestasCargadas);
+        const entregablesPorPropuesta = await Promise.all(
+          propuestasCargadas
+            .filter((propuesta) => propuesta.id || propuesta._id)
+            .map((propuesta) => listarEntregables(propuesta.id || propuesta._id)),
+        );
+        setEntregables(entregablesPorPropuesta.flat());
       } catch (error) {
         setEntregablesError(error.message);
       }
@@ -86,7 +96,13 @@ export default function AppContent() {
   }, []);
 
   function handleProposalCreated(propuesta) {
-    setPropuestas((currentPropuestas) => [...currentPropuestas, propuesta]);
+    setPropuestas((currentPropuestas) => {
+      const id = propuesta.id || propuesta._id;
+      const exists = currentPropuestas.some((item) => String(item.id || item._id) === String(id));
+      return exists
+        ? currentPropuestas.map((item) => String(item.id || item._id) === String(id) ? propuesta : item)
+        : [...currentPropuestas, propuesta];
+    });
   }
 
   function handleDeliverableCreated(entregable) {
@@ -107,8 +123,12 @@ export default function AppContent() {
   }
 
   function handleProposalEvaluated(propuestaId, estado) {
+    if (estado === '__ELIMINADA__') {
+      setPropuestas((currentPropuestas) => currentPropuestas.filter((propuesta) => String(propuesta.id || propuesta._id) !== String(propuestaId)));
+      return;
+    }
     setPropuestas((currentPropuestas) => currentPropuestas.map((propuesta) => (
-      String(propuesta.id) === String(propuestaId)
+      String(propuesta.id || propuesta._id) === String(propuestaId)
         ? { ...propuesta, estado }
         : propuesta
     )));
@@ -130,6 +150,8 @@ export default function AppContent() {
     onProposalEvaluated: handleProposalEvaluated,
     selectedDeliverable,
     onSelectDeliverable: setSelectedDeliverable,
+    selectedProposal,
+    onSelectProposal: setSelectedProposal,
   };
 
   const pages = {
@@ -139,7 +161,10 @@ export default function AppContent() {
     'subir-entregable': <UploadDeliverable {...pageProps} />,
     'propuestas-disponibles': <AvailableProposals {...pageProps} />, 'propuestas-asignadas': <AssignedProposals {...pageProps} />,
     'evaluacion-propuesta': <ProposalEvaluation {...pageProps} />,
+    'detalle-propuesta': <ProposalDetails {...pageProps} />,
     'secretaria-reportes': <SecretariaReportes {...pageProps} />,
+    'jefe-carrera': <JefeCarreraHome {...pageProps} />,
+    'editar-propuesta': <EditProposal {...pageProps} />,
   };
 
   return pages[currentView] || pages.login;
