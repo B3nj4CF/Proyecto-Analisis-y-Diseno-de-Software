@@ -76,6 +76,12 @@ router.post('/entregables/upload', (req, res, next) => {
       return res.status(404).json({ error: 'No se pudo verificar la propuesta.' });
     }
     const propuesta = await propuestaResponse.json();
+    if (propuesta.estado === 'Cerrado') {
+      fs.unlink(file.path, () => {});
+      return res.status(409).json({
+        error: 'La memoria está cerrada y no admite nuevos entregables.'
+      });
+    }
     if (etapaNormalizada !== 'avance 2' && propuesta.estado !== 'Autorizada') {
       return res.status(409).json({ error: `La propuesta está "${propuesta.estado}". Debe quedar "Autorizada" por Jefatura antes de subir esta etapa.` });
     }
@@ -187,6 +193,20 @@ router.post('/entregables/:entregable_id/evaluaciones', async (req, res) => {
 
     const result = await pool.query('SELECT propuesta_id FROM entregables WHERE id = $1', [entregable_id]);
     if (!result.rowCount) return res.status(404).json({ error: 'El entregable no existe.' });
+
+    const propuestaResponse = await fetch(
+      `${TRAMITACION_API_URL}/api/propuestas/${result.rows[0].propuesta_id}`
+    );
+    if (!propuestaResponse.ok) {
+      return res.status(502).json({ error: 'No se pudo verificar el estado de la memoria.' });
+    }
+    const propuesta = await propuestaResponse.json();
+    if (propuesta.estado === 'Cerrado') {
+      return res.status(409).json({
+        error: 'La memoria está cerrada y no admite nuevas evaluaciones.'
+      });
+    }
+
     const evaluation = await pool.query(`
       INSERT INTO evaluaciones_entregables
         (entregable_id, evaluador_nombre, nota, comentarios, confirmacion_reprobacion)
@@ -219,6 +239,28 @@ router.post('/entregables/:entregable_id/comentarios', async (req, res) => {
     if (!autor_nombre || autor_nombre.trim().length < 2 || !contenido || contenido.trim().length < 5) {
       return res.status(400).json({ error: 'Datos de observación inválidos.' });
     }
+
+    const entregable = await pool.query(
+      'SELECT propuesta_id FROM entregables WHERE id = $1',
+      [req.params.entregable_id],
+    );
+    if (!entregable.rowCount) {
+      return res.status(404).json({ error: 'El entregable no existe.' });
+    }
+
+    const propuestaResponse = await fetch(
+      `${TRAMITACION_API_URL}/api/propuestas/${entregable.rows[0].propuesta_id}`
+    );
+    if (!propuestaResponse.ok) {
+      return res.status(502).json({ error: 'No se pudo verificar el estado de la memoria.' });
+    }
+    const propuesta = await propuestaResponse.json();
+    if (propuesta.estado === 'Cerrado') {
+      return res.status(409).json({
+        error: 'La memoria está cerrada y no admite nuevas observaciones.'
+      });
+    }
+
     const result = await pool.query(
       `INSERT INTO comentarios_entregables (entregable_id, autor_nombre, rol, contenido)
        VALUES ($1, $2, $3, $4) RETURNING id, entregable_id, autor_nombre, rol, contenido, fecha_creacion`,

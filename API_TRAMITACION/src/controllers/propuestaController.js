@@ -40,6 +40,11 @@ const evaluarPropuesta = async (req, res) => {
     if (propuesta.rowCount === 0) {
       return res.status(404).json({ error: 'Propuesta no encontrada' });
     }
+    if (propuesta.rows[0].estado === 'Cerrado') {
+      return res.status(409).json({
+        error: 'La memoria está cerrada y no admite modificaciones.'
+      });
+    }
 
     if (!['En revisi\u00f3n', 'Rechazada por Gu\u00eda'].includes(propuesta.rows[0].estado)) {
       return res.status(409).json({
@@ -117,6 +122,12 @@ const actualizarEstadoPropuesta = async (req, res) => {
       return res.status(404).json({ error: 'Propuesta no encontrada' });
     }
     const estadoActual = actual.rows[0].estado;
+
+    if (estadoActual === 'Cerrado') {
+      return res.status(409).json({
+        error: 'La memoria est\u00e1 cerrada y no admite modificaciones.'
+      });
+    }
     const transicionValida = estado === 'Autorizada'
       ? estadoActual === 'Aprobada por Gu\u00eda'
       : estado === 'Habilitado para Defensa'

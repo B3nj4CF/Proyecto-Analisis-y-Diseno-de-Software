@@ -89,6 +89,31 @@ async function validarCierre(req, res) {
     if (propuesta.estado !== 'Habilitado para Defensa') {
       return res.status(409).json({ error: 'La memoria debe estar habilitada para defensa.' });
     }
+    await database.query(`
+      ALTER TABLE validaciones
+      ADD COLUMN IF NOT EXISTS rol VARCHAR(50)
+    `);
+
+    const vistosBuenos = await database.query(`
+      SELECT
+        COALESCE(BOOL_OR(rol IN ('co-guia', 'profesor-guia')), FALSE) AS co_guia,
+        COALESCE(BOOL_OR(rol = 'jefe-carrera'), FALSE) AS jefe_carrera
+      FROM validaciones
+      WHERE propuesta_id = $1
+        AND resultado = 'VISTO_BUENO_EXAMEN'
+    `, [id]);
+
+    const vistos = vistosBuenos.rows[0] || {};
+    if (!vistos.co_guia || !vistos.jefe_carrera) {
+      const faltantes = [];
+      if (!vistos.co_guia) faltantes.push('co-guía');
+      if (!vistos.jefe_carrera) faltantes.push('Jefatura de Carrera');
+
+      return res.status(409).json({
+        error: `No se puede cerrar la memoria. Falta visto bueno de: ${faltantes.join(' y ')}.`,
+      });
+    }
+
     const result = await database.query(
       'SELECT * FROM reportes_memoria WHERE propuesta_id = $1',
       [id],
