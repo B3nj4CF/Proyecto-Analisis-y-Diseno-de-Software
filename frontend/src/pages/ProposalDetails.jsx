@@ -5,12 +5,15 @@ import {
   listarComentariosEntregable,
   listarEvaluacionesPropuesta,
   listarHistorialEntregables,
+  listarVersionesPropuesta,
+  urlArchivoVersionPropuesta,
 } from '../lib/api';
 
 function ProposalDetails({ selectedProposal, onNavigate, currentView }) {
   const [history, setHistory] = useState([]);
   const [proposalEvaluations, setProposalEvaluations] = useState([]);
   const [comments, setComments] = useState({});
+  const [versions, setVersions] = useState([]);
   const [error, setError] = useState('');
   const proposalId = selectedProposal?.id || selectedProposal?._id;
 
@@ -20,11 +23,13 @@ function ProposalDetails({ selectedProposal, onNavigate, currentView }) {
     Promise.all([
       listarHistorialEntregables(proposalId),
       listarEvaluacionesPropuesta(proposalId),
-    ]).then(async ([items, evaluations]) => {
+      listarVersionesPropuesta(proposalId),
+    ]).then(async ([items, evaluations, versionList]) => {
       const entries = await Promise.all(items.map(async (item) => [item.id, await listarComentariosEntregable(item.id)]));
       if (active) {
         setHistory(items);
         setProposalEvaluations(evaluations);
+        setVersions(versionList);
         setComments(Object.fromEntries(entries));
       }
     }).catch((loadError) => active && setError(loadError.message));
@@ -53,6 +58,15 @@ function ProposalDetails({ selectedProposal, onNavigate, currentView }) {
           </div>
           {proposalId && <a href={`${API_TRAMITACION_URL}/api/propuestas/${proposalId}/archivo`} target="_blank" rel="noreferrer" className="mt-4 inline-block rounded-lg bg-[#07558d] px-4 py-2 text-[10px] font-bold text-white">Ver PDF de inscripción</a>}
         </section>
+        {!!versions.length && (
+          <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-black text-[#0c1d36]">Historial de versiones</h2>
+            <p className="mt-1 text-[10px] text-slate-500">Versiones anteriores de la propuesta, reemplazadas al reenviarla tras un rechazo.</p>
+            <div className="mt-4 space-y-3">
+              {versions.map((version) => <VersionCard key={version.id} version={version} proposalId={proposalId} />)}
+            </div>
+          </section>
+        )}
         <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-xl font-black text-[#0c1d36]">Observaciones y actualizaciones</h2>
           {error && <p className="mt-3 rounded-lg bg-red-50 p-3 text-xs font-bold text-red-600">{error}</p>}
@@ -68,6 +82,25 @@ function ProposalDetails({ selectedProposal, onNavigate, currentView }) {
         </section>
       </main>
     </div>
+  );
+}
+
+function VersionCard({ version, proposalId }) {
+  return (
+    <article className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="rounded-full bg-slate-200 px-2 py-1 text-[9px] font-bold text-slate-700">Versión {version.numero_version}{version.estado_al_reemplazar ? ` · ${version.estado_al_reemplazar}` : ''}</span>
+        <span className="text-[9px] text-slate-400">Reemplazada el {version.fecha_version ? new Date(version.fecha_version).toLocaleString('es-CL') : 'fecha no disponible'}</span>
+      </div>
+      <h3 className="mt-2 text-sm font-black text-[#0c1d36]">{version.titulo}</h3>
+      <div className="mt-2 grid gap-2 text-[10px] text-slate-600 md:grid-cols-2">
+        <Detail label="Resumen ejecutivo" value={version.resumen} wide />
+        <Detail label="Problema de ingeniería" value={version.problema_ingenieria} wide />
+        <Detail label="Objetivos" value={version.objetivos} wide />
+        <Detail label="Bibliografía" value={version.bibliografia} wide />
+      </div>
+      {version.nombre_archivo && <a href={urlArchivoVersionPropuesta(proposalId, version.id)} target="_blank" rel="noreferrer" className="mt-3 inline-block rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-slate-100">Ver PDF de esta versión ({version.nombre_archivo})</a>}
+    </article>
   );
 }
 

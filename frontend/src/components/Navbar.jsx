@@ -26,7 +26,6 @@ function Navbar({ role, currentView, onNavigate }) {
             <div className="font-black text-sm tracking-wide">SGM</div>
             <div className="text-[9px] font-semibold">Informática</div>
           </div>
-          <span className="hidden xl:inline rounded-full bg-[#f7b719] px-2 py-1 text-[8px] font-black text-[#12305a]">V2.0<br />MICROSERVICIOS</span>
         </div>
 
         <div className="flex items-center gap-1 md:gap-4 lg:gap-7 font-bold text-[10px] md:text-xs">

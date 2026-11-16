@@ -264,4 +264,75 @@ router.get(
   hu09Historial.obtenerHistorial
 );
 
+// ============================================================================
+// HU-11: Eliminar documento subido por error (registro en BD + PDF físico)
+// Solo se permite si el entregable sigue "Pendiente de Revisión" y sin evaluaciones.
+// Las tablas hijas (comentarios, evaluaciones, alertas) se limpian por ON DELETE CASCADE.
+// ============================================================================
+router.delete('/entregables/:entregable_id', async (req, res) => {
+  const { entregable_id } = req.params;
+  if (!/^\d+$/.test(entregable_id)) {
+    return res.status(400).json({ error: 'ID de entregable inválido.' });
+  }
+
+  const client = await pool.connect();
+  let entregable;
+
+  try {
+    await client.query('BEGIN');
+
+    // Bloquea la fila para evitar que se evalúe mientras se elimina
+    const found = await client.query(
+      `SELECT id, propuesta_id, etapa, nombre_archivo, ruta_archivo, estado
+       FROM entregables WHERE id = $1 FOR UPDATE`,
+      [entregable_id]
+    );
+    if (!found.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'El entregable no existe.' });
+    }
+    entregable = found.rows[0];
+
+    const evaluado = await client.query(
+      'SELECT 1 FROM evaluaciones_entregables WHERE entregable_id = $1 LIMIT 1',
+      [entregable_id]
+    );
+    if (entregable.estado !== 'Pendiente de Revisión' || evaluado.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({
+        error: 'No se puede eliminar un entregable que ya fue revisado o evaluado.'
+      });
+    }
+
+    await client.query('DELETE FROM entregables WHERE id = $1', [entregable_id]);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('Error al eliminar entregable:', error);
+    return res.status(500).json({ error: 'No se pudo eliminar el entregable.' });
+  } finally {
+    client.release();
+  }
+
+  // Borrado físico del PDF (después del COMMIT)
+  try {
+    const rutaAbsoluta = path.resolve(entregable.ruta_archivo);
+    if (rutaAbsoluta.startsWith(path.resolve(uploadDir) + path.sep)) {
+      await fs.promises.unlink(rutaAbsoluta);
+    }
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      console.error('Entregable eliminado, pero no se pudo borrar el PDF:', error);
+    }
+  }
+
+  return res.status(200).json({
+    mensaje: 'Entregable eliminado correctamente.',
+    id: entregable.id,
+    propuesta_id: String(entregable.propuesta_id),
+    etapa: entregable.etapa,
+    nombre_archivo: entregable.nombre_archivo
+  });
+});
+
 module.exports = router;
