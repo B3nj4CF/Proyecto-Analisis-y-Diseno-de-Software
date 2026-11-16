@@ -134,16 +134,38 @@ export async function actualizarEstadoPropuesta(propuestaId, estado) {
   return parseResponse(response, 'No se pudo actualizar el estado de la propuesta.');
 }
 
+// HU-14: reenvío de una propuesta rechazada. `datos.archivo` (File PDF) es opcional.
 export async function editarPropuesta(propuestaId, datos) {
+  const { archivo, ...campos } = datos;
+  const body = new FormData();
+  Object.entries(campos).forEach(([clave, valor]) => {
+    if (valor !== undefined && valor !== null) body.append(clave, valor);
+  });
+  if (archivo instanceof File) body.append('archivo', archivo);
+
   const response = await fetch(`${API_TRAMITACION_URL}/api/propuestas/${propuestaId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(datos),
+    body,
   });
   return parseResponse(response, 'No se pudo reenviar la propuesta.');
+}
+
+export async function listarVersionesPropuesta(propuestaId) {
+  const response = await fetch(`${API_TRAMITACION_URL}/api/propuestas/${propuestaId}/versiones`);
+  return parseResponse(response, 'No se pudo cargar el historial de versiones.');
+}
+
+export function urlArchivoVersionPropuesta(propuestaId, versionId) {
+  return `${API_TRAMITACION_URL}/api/propuestas/${propuestaId}/versiones/${versionId}/archivo`;
 }
 
 export async function eliminarPropuesta(propuestaId) {
   const response = await fetch(`${API_TRAMITACION_URL}/api/propuestas/${propuestaId}`, { method: 'DELETE' });
   return parseResponse(response, 'No se pudo eliminar la propuesta.');
+}
+
+// HU-11: eliminar un documento subido por error (solo si sigue pendiente de revisión)
+export async function eliminarEntregable(entregableId) {
+  const response = await fetch(`${API_ENTREGABLES_URL}/api/entregables/${entregableId}`, { method: 'DELETE' });
+  return parseResponse(response, 'No se pudo eliminar el documento.');
 }

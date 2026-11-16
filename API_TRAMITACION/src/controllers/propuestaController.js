@@ -129,34 +129,163 @@ const actualizarEstadoPropuesta = async (req, res) => {
   }
 };
 
+// ---------------------------------------------------------------------------
+// HU-14: historial de versiones de la propuesta
+// Cada reenvío guarda la versión anterior (datos + PDF) en propuesta_versiones.
+// La tabla se crea sola la primera vez que se usa (no requiere tocar init/).
+// ---------------------------------------------------------------------------
+let versionesTableReady = false;
+const ensureVersionesTable = async () => {
+  if (versionesTableReady) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS propuesta_versiones (
+      id SERIAL PRIMARY KEY,
+      propuesta_id INTEGER NOT NULL REFERENCES propuestas(id) ON DELETE CASCADE,
+      numero_version INTEGER NOT NULL,
+      titulo TEXT,
+      resumen TEXT,
+      problema_ingenieria TEXT,
+      objetivos TEXT,
+      bibliografia TEXT,
+      nombre_archivo VARCHAR(255),
+      ruta_archivo VARCHAR(255),
+      estado_al_reemplazar VARCHAR(50),
+      fecha_version TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (propuesta_id, numero_version)
+    )
+  `);
+  versionesTableReady = true;
+};
+
 const editarPropuesta = async (req, res) => {
+  const propuestaId = req.params.propuesta_id;
+  const archivoNuevo = req.file; // opcional: PDF de reemplazo
+  const descartarArchivoNuevo = () => (
+    archivoNuevo ? fs.promises.unlink(archivoNuevo.path).catch(() => {}) : Promise.resolve()
+  );
+
+  const {
+    titulo, resumen, problema_ingenieria, objetivos, bibliografia,
+    memorista, rut, rol_usm, celular, campus, modalidad, profesor,
+  } = req.body || {};
+
+  if (!/^\d+$/.test(propuestaId)) {
+    await descartarArchivoNuevo();
+    return res.status(400).json({ error: 'ID de propuesta inválido.' });
+  }
+  if (![titulo, resumen, problema_ingenieria, objetivos, bibliografia].every((value) => String(value || '').trim())) {
+    await descartarArchivoNuevo();
+    return res.status(400).json({ error: 'Título, resumen, problema, objetivos y bibliografía son obligatorios.' });
+  }
+
+  let client;
   try {
-    const propuestaId = req.params.propuesta_id;
-    const {
-      titulo, resumen, problema_ingenieria, objetivos, bibliografia,
-      memorista, rut, rol_usm, celular, campus, modalidad, profesor,
-    } = req.body || {};
-    if (![titulo, resumen, problema_ingenieria, objetivos, bibliografia].every((value) => String(value || '').trim())) {
-      return res.status(400).json({ error: 'Título, resumen, problema, objetivos y bibliografía son obligatorios.' });
+    await ensureVersionesTable();
+    client = await pool.connect();
+    await client.query('BEGIN');
+
+    const actual = await client.query('SELECT * FROM propuestas WHERE id = $1 FOR UPDATE', [propuestaId]);
+    if (!actual.rowCount) {
+      await client.query('ROLLBACK');
+      await descartarArchivoNuevo();
+      return res.status(404).json({ error: 'Propuesta no encontrada' });
     }
-    const result = await pool.query(`
+    const anterior = actual.rows[0];
+    if (anterior.estado !== 'Rechazada por Guía') {
+      await client.query('ROLLBACK');
+      await descartarArchivoNuevo();
+      return res.status(409).json({ error: 'Solo se pueden editar propuestas rechazadas.' });
+    }
+
+    // 1) Guarda la versión que se está reemplazando (1 = inscripción original)
+    const totales = await client.query(
+      'SELECT COUNT(*)::int AS total FROM propuesta_versiones WHERE propuesta_id = $1',
+      [propuestaId],
+    );
+    const total = totales.rows[0].total;
+    await client.query(`
+      INSERT INTO propuesta_versiones
+        (propuesta_id, numero_version, titulo, resumen, problema_ingenieria, objetivos,
+         bibliografia, nombre_archivo, ruta_archivo, estado_al_reemplazar)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `, [propuestaId, total + 1, anterior.titulo, anterior.resumen, anterior.problema_ingenieria,
+      anterior.objetivos, anterior.bibliografia, anterior.nombre_archivo, anterior.ruta_archivo,
+      anterior.estado]);
+
+    // 2) Actualiza la propuesta vigente (y su PDF si se adjuntó uno nuevo) y la reenvía a revisión
+    const result = await client.query(`
       UPDATE propuestas
       SET titulo = $1, resumen = $2, problema_ingenieria = $3, objetivos = $4,
           bibliografia = $5, memorista = COALESCE($6, memorista), rut = COALESCE($7, rut),
           rol_usm = COALESCE($8, rol_usm), celular = COALESCE($9, celular),
           campus = COALESCE($10, campus), modalidad = COALESCE($11, modalidad),
-          profesor = COALESCE($12, profesor), estado = 'En revisión'
-      WHERE id = $13 AND estado = 'Rechazada por Guía'
+          profesor = COALESCE($12, profesor),
+          nombre_archivo = COALESCE($13, nombre_archivo),
+          ruta_archivo = COALESCE($14, ruta_archivo),
+          estado = 'En revisión'
+      WHERE id = $15
       RETURNING *
     `, [titulo.trim(), resumen.trim(), problema_ingenieria.trim(), objetivos.trim(),
-      bibliografia.trim(), memorista, rut, rol_usm, celular, campus, modalidad, profesor, propuestaId]);
-    if (!result.rowCount) {
-      return res.status(409).json({ error: 'Solo se pueden editar propuestas rechazadas.' });
-    }
-    return res.status(200).json(result.rows[0]);
+      bibliografia.trim(), memorista, rut, rol_usm, celular, campus, modalidad, profesor,
+      archivoNuevo ? archivoNuevo.originalname : null,
+      archivoNuevo ? archivoNuevo.path : null,
+      propuestaId]);
+
+    await client.query('COMMIT');
+    // El PDF anterior NO se borra: queda referenciado por la versión guardada.
+    return res.status(200).json({ ...result.rows[0], version_actual: total + 2 });
   } catch (error) {
+    if (client) await client.query('ROLLBACK').catch(() => {});
+    await descartarArchivoNuevo();
     console.error('Error al editar propuesta:', error);
     return res.status(500).json({ error: 'No se pudo reenviar la propuesta.' });
+  } finally {
+    if (client) client.release();
+  }
+};
+
+const obtenerVersionesPropuesta = async (req, res) => {
+  const propuestaId = req.params.propuesta_id;
+  if (!/^\d+$/.test(propuestaId)) return res.status(400).json({ error: 'ID de propuesta inválido.' });
+  try {
+    await ensureVersionesTable();
+    const existe = await pool.query('SELECT id FROM propuestas WHERE id = $1', [propuestaId]);
+    if (!existe.rowCount) return res.status(404).json({ error: 'Propuesta no encontrada' });
+    const result = await pool.query(`
+      SELECT id, propuesta_id, numero_version, titulo, resumen, problema_ingenieria, objetivos,
+             bibliografia, nombre_archivo, estado_al_reemplazar, fecha_version
+      FROM propuesta_versiones
+      WHERE propuesta_id = $1
+      ORDER BY numero_version DESC
+    `, [propuestaId]);
+    return res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error al consultar versiones de la propuesta:', error);
+    return res.status(500).json({ error: 'No se pudo consultar el historial de versiones.' });
+  }
+};
+
+const getVersionFile = async (req, res) => {
+  const { propuesta_id: propuestaId, version_id: versionId } = req.params;
+  if (!/^\d+$/.test(propuestaId) || !/^\d+$/.test(versionId)) {
+    return res.status(400).json({ error: 'ID inválido.' });
+  }
+  try {
+    await ensureVersionesTable();
+    const result = await pool.query(
+      'SELECT ruta_archivo, nombre_archivo FROM propuesta_versiones WHERE id = $1 AND propuesta_id = $2',
+      [versionId, propuestaId],
+    );
+    const version = result.rows[0];
+    if (!version?.ruta_archivo) {
+      return res.status(404).json({ error: 'La versión no tiene un archivo asociado' });
+    }
+    return res.download(version.ruta_archivo, version.nombre_archivo, (error) => {
+      if (error && !res.headersSent) res.status(404).json({ error: 'El archivo de esta versión ya no está disponible' });
+    });
+  } catch (error) {
+    console.error('Error al descargar el PDF de una versión:', error);
+    return res.status(500).json({ error: 'No se pudo descargar el archivo' });
   }
 };
 
@@ -260,6 +389,8 @@ module.exports = {
   editarPropuesta,
   eliminarPropuesta,
   getProposalFile,
+  obtenerVersionesPropuesta,
+  getVersionFile,
   evaluarPropuesta,
   uploadMiddleware: uploadPropuesta.single('archivo'),
   handleUploadError: (error, req, res, next) => {
