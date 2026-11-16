@@ -82,16 +82,16 @@ router.post('/entregables/upload', (req, res, next) => {
     if (etapaNormalizada !== 'avance 1') {
       const etapaPrevia = etapaNormalizada === 'avance 2' ? 'Avance 1' : 'Avance 2';
       const previous = await pool.query(`
-        SELECT EXISTS (
-          SELECT 1
-          FROM entregables e
-          INNER JOIN evaluaciones_entregables v ON v.entregable_id = e.id
-          WHERE e.propuesta_id = $1
-            AND LOWER(TRIM(e.etapa)) = LOWER(TRIM($2))
-            AND v.nota >= 70
-        ) AS aprobado
+        SELECT v.nota
+        FROM entregables e
+        INNER JOIN evaluaciones_entregables v ON v.entregable_id = e.id
+        WHERE e.propuesta_id = $1
+          AND LOWER(TRIM(e.etapa)) = LOWER(TRIM($2))
+        ORDER BY v.fecha_evaluacion DESC, v.id DESC
+        LIMIT 1
       `, [propuesta_id, etapaPrevia]);
-      if (!previous.rows[0]?.aprobado) {
+
+      if (!previous.rowCount || Number(previous.rows[0].nota) < 70) {
         return res.status(409).json({ error: `Debes aprobar ${etapaPrevia} antes de continuar.` });
       }
     }
@@ -166,10 +166,25 @@ router.post('/entregables/:entregable_id/evaluaciones', async (req, res) => {
   try {
     const { entregable_id } = req.params;
     const { evaluador_nombre, nota, comentarios, confirmacion_reprobacion = false } = req.body;
+    const rolEvaluador = req.get('X-Demo-Role');
+    const rolesPermitidos = ['profesor-guia', 'co-guia', 'correferente'];
+
+    if (!rolesPermitidos.includes(rolEvaluador)) {
+      return res.status(403).json({
+        error: 'Solo Profesor Guia, Co-guia/Mentor o Correferente pueden evaluar avances.'
+      });
+    }
+
     const numericNota = Number(nota);
     if (!evaluador_nombre || !Number.isInteger(numericNota) || numericNota < 0 || numericNota > 100 || !comentarios || comentarios.trim().length < 5) {
       return res.status(400).json({ error: 'Datos de evaluación inválidos.' });
     }
+    if (numericNota < 70 && confirmacion_reprobacion !== true) {
+      return res.status(409).json({
+        error: 'Debes confirmar explicitamente la reprobacion para registrar una nota menor a 70.'
+      });
+    }
+
     const result = await pool.query('SELECT propuesta_id FROM entregables WHERE id = $1', [entregable_id]);
     if (!result.rowCount) return res.status(404).json({ error: 'El entregable no existe.' });
     const evaluation = await pool.query(`

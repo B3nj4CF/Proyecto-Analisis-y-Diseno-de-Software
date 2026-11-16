@@ -34,11 +34,17 @@ const evaluarPropuesta = async (req, res) => {
     }
 
     const propuesta = await pool.query(
-      'SELECT id FROM propuestas WHERE id = $1',
+      'SELECT id, estado FROM propuestas WHERE id = $1',
       [propuestaId]
     );
     if (propuesta.rowCount === 0) {
       return res.status(404).json({ error: 'Propuesta no encontrada' });
+    }
+
+    if (!['En revisi\u00f3n', 'Rechazada por Gu\u00eda'].includes(propuesta.rows[0].estado)) {
+      return res.status(409).json({
+        error: `La propuesta no puede ser evaluada nuevamente desde el estado "${propuesta.rows[0].estado}".`
+      });
     }
 
     const result = await pool.query(
@@ -96,6 +102,12 @@ const actualizarEstadoPropuesta = async (req, res) => {
     if (estado === 'Autorizada' && req.get('X-Demo-Role') !== 'jefe-carrera') {
       return res.status(403).json({ error: 'Solo Jefatura puede autorizar el inicio de la memoria.' });
     }
+    if (estado === 'Habilitado para Defensa' && req.get('X-Demo-Role') !== 'validaciones') {
+      return res.status(403).json({
+        error: 'La habilitacion para defensa solo puede realizarse despues de completar los vistos buenos.'
+      });
+    }
+
     if (estado === 'Cerrado' && req.get('X-Demo-Role') !== 'jefe-carrera') {
       return res.status(403).json({ error: 'Solo Jefatura puede cerrar la memoria.' });
     }
@@ -104,11 +116,14 @@ const actualizarEstadoPropuesta = async (req, res) => {
     if (actual.rowCount === 0) {
       return res.status(404).json({ error: 'Propuesta no encontrada' });
     }
+    const estadoActual = actual.rows[0].estado;
     const transicionValida = estado === 'Autorizada'
-      ? actual.rows[0].estado === 'Aprobada por Guía'
-      : estado === 'Cerrado'
-        ? actual.rows[0].estado === 'Habilitado para Defensa'
-        : true;
+      ? estadoActual === 'Aprobada por Gu\u00eda'
+      : estado === 'Habilitado para Defensa'
+        ? estadoActual === 'Autorizada'
+        : estado === 'Cerrado'
+          ? estadoActual === 'Habilitado para Defensa'
+          : false;
     if (!transicionValida) {
       return res.status(409).json({ error: `No se puede cambiar desde "${actual.rows[0].estado}" a "${estado}".` });
     }

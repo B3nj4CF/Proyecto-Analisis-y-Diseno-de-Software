@@ -22,9 +22,20 @@ function UploadDeliverable({ propuestas = [], onNavigate, currentView, onDeliver
   }, [propuestaId]);
 
   function tieneAprobacion(etapaBuscada) {
-    return historial
+    const evaluaciones = historial
       .filter((item) => item.etapa?.trim().toLowerCase() === etapaBuscada.trim().toLowerCase())
-      .some((item) => (item.evaluaciones || []).some((evaluacion) => Number(evaluacion.nota) >= 70));
+      .flatMap((item) => (item.evaluaciones || []).map((evaluacion) => ({
+        ...evaluacion,
+        entregableId: item.id,
+      })))
+      .sort((a, b) => {
+        const fechaA = new Date(a.fecha_evaluacion || 0).getTime();
+        const fechaB = new Date(b.fecha_evaluacion || 0).getTime();
+        if (fechaA !== fechaB) return fechaB - fechaA;
+        return Number(b.id || 0) - Number(a.id || 0);
+      });
+
+    return evaluaciones.length > 0 && Number(evaluaciones[0].nota) >= 70;
   }
 
   const siguienteEtapa = tieneAprobacion('Avance 2')

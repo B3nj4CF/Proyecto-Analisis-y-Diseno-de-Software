@@ -115,11 +115,6 @@ export default function AppContent() {
         ? { ...entregable, estado: 'Revisado' }
         : entregable
     )));
-    setPropuestas((currentPropuestas) => currentPropuestas.map((propuesta) => (
-      String(propuesta.id) === String(propuestaId)
-        ? { ...propuesta, estado: 'Autorizada' }
-        : propuesta
-    )));
   }
 
   function handleProposalEvaluated(propuestaId, estado) {
