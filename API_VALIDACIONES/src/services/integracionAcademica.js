@@ -49,7 +49,7 @@ async function actualizarEstado(id, estado) {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
-      'X-Demo-Role': 'jefe-carrera',
+      'X-Demo-Role': estado === 'Habilitado para Defensa' ? 'validaciones' : 'jefe-carrera',
     },
     body: JSON.stringify({ estado }),
   });

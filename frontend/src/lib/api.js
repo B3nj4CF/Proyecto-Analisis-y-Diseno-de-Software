@@ -88,11 +88,12 @@ export async function subirEntregable(data) {
   return parseResponse(response, 'No se pudo subir el documento.');
 }
 
-export async function crearEvaluacion(entregableId, datos) {
+export async function crearEvaluacion(entregableId, datos, rolEvaluador = 'correferente') {
   const response = await fetch(`${API_ENTREGABLES_URL}/api/entregables/${entregableId}/evaluaciones`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'X-Demo-Role': rolEvaluador,
     },
     body: JSON.stringify(datos),
   });

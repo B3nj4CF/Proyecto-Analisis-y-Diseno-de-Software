@@ -97,7 +97,17 @@ function ProposalEvaluation({
         const evaluacion = await crearEvaluacionPropuesta(selectedDeliverable.id, datosEvaluacion);
         onProposalEvaluated(selectedDeliverable.id, evaluacion.estado_propuesta);
       } else {
-        await crearEvaluacion(selectedDeliverable.id, datosEvaluacion);
+        const rolApi = reviewRole.startsWith('Profesor')
+          ? 'profesor-guia'
+          : reviewRole.startsWith('Co-')
+            ? 'co-guia'
+            : 'correferente';
+
+        await crearEvaluacion(
+          selectedDeliverable.id,
+          datosEvaluacion,
+          rolApi,
+        );
         onDeliverableEvaluated(selectedDeliverable.id, selectedDeliverable.propuesta_id);
       }
       onNavigate('propuestas-asignadas');
