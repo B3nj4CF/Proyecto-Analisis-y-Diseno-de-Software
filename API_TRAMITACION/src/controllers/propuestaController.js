@@ -34,11 +34,16 @@ const evaluarPropuesta = async (req, res) => {
     }
 
     const propuesta = await pool.query(
-      'SELECT id FROM propuestas WHERE id = $1',
+      'SELECT id, estado FROM propuestas WHERE id = $1',
       [propuestaId]
     );
     if (propuesta.rowCount === 0) {
       return res.status(404).json({ error: 'Propuesta no encontrada' });
+    }
+    if (propuesta.rows[0].estado === 'Cerrado') {
+      return res.status(409).json({
+        error: 'La memoria está cerrada y no admite modificaciones.'
+      });
     }
 
     const result = await pool.query(
@@ -104,6 +109,12 @@ const actualizarEstadoPropuesta = async (req, res) => {
     if (actual.rowCount === 0) {
       return res.status(404).json({ error: 'Propuesta no encontrada' });
     }
+    if (actual.rows[0].estado === 'Cerrado') {
+      return res.status(409).json({
+        error: 'La memoria está cerrada y no admite modificaciones.'
+      });
+    }
+
     const transicionValida = estado === 'Autorizada'
       ? actual.rows[0].estado === 'Aprobada por Guía'
       : estado === 'Cerrado'
