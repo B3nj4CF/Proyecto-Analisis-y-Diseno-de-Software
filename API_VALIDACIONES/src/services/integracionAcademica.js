@@ -47,7 +47,10 @@ async function historial(id) {
 async function actualizarEstado(id, estado) {
   const response = await fetch(`${API_TRAMITACION}/api/propuestas/${id}/estado`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Demo-Role': 'jefe-carrera',
+    },
     body: JSON.stringify({ estado }),
   });
   if (!response.ok) {
